@@ -376,7 +376,23 @@
 <body>
     <div class="page">
         <form id="employment-form" action="https://formsubmit.co/your-computo@serviestibasa.com" method="POST" aria-labelledby="form-title" enctype="multipart/form-data">
-            <header>
+           
+             <input type="hidden" name="_captcha" value="false">
+    <input type="hidden" name="_autoresponse" value="Gracias por su interés en nuestra empresa. Hemos recibido su solicitud de empleo exitosamente y nuestro equipo de Recursos Humanos la revisará. Nos pondremos en contacto con usted en caso de que su perfil se ajuste a nuestras vacantes. ¡Le deseamos mucho éxito!">
+    <input type="hidden" name="_next" value="https://tu-sitio-web.com/gracias.html">
+
+    <fieldset>
+        <legend>Datos Personales</legend>
+        </fieldset>
+
+    <div class="actions">
+        <button class="ghost" type="reset">Limpiar formulario</button>
+        <div style="flex:1"></div>
+        <button class="primary" type="submit">Enviar Solicitud</button>
+    </div>
+</form>
+
+        <header>
                 <h1 id="form-title">SOLICITUD DE EMPLEO</h1>
                 <div class="today">
                     <label for="fecha_hoy">FECHA DE HOY:</label>
@@ -968,4 +984,5 @@
     </script>
 </body>
 </html>
+
 
