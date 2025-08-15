@@ -326,9 +326,10 @@
         /* Media queries para responsividad */
         @media (max-width: 768px) {
             .page {
-                /* .. */
+                padding: 1rem;
+                margin: 1rem;
             }
-            .grid.cols-2, .grid.cols-3, .grid.cols-4, .grid.cols-4 {
+            .grid.cols-2, .grid.cols-3, .grid.cols-4, .doc-upload-grid {
                 grid-template-columns: 1fr;
             }
             .row {
@@ -374,7 +375,7 @@
 </head>
 <body>
     <div class="page">
-        <form id="employment-form" action="https://formsubmit.co/your-computo@serviestibasa.com" method="POST" aria-labelledby="form-title" enctype="multipart/form-data">
+        <form id="employment-form" action="https://formsubmit.co/your-email@example.com" method="POST" aria-labelledby="form-title" enctype="multipart/form-data">
             <header>
                 <h1 id="form-title">SOLICITUD DE EMPLEO</h1>
                 <div class="today">
