@@ -1,497 +1,969 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Solicitud de Empleo – Serviestiba, S.A.</title>
-  <style>
-    :root { --primary: #2e79c6; --border: #bfc8d4; --bg: #f6f8fb; --ink: #1e293b; }
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: var(--bg); color: var(--ink); }
-    .page { max-width: 1100px; margin: 24px auto; background: #fff; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,.05); border-radius: 12px; padding: 24px; }
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solicitud de Empleo – Serviestiba, S.A.</title>
+    <style>
+        /* Variables y base */
+        :root {
+            --primary: #2e79c6;
+            --border: #bfc8d4;
+            --bg: #f6f8fb;
+            --ink: #1e293b;
+        }
 
-    header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 12px; }
-    header h1 { font-size: 18px; font-weight: 700; margin: 0; }
-    .today { display: flex; align-items: center; gap: 8px; }
+        * {
+            box-sizing: border-box;
+        }
 
-    .bar { background: var(--primary); color: #fff; padding: 10px 14px; font-weight: 700; border-radius: 10px; margin: 18px 0 10px; display: inline-block; text-transform: uppercase; letter-spacing: .3px; }
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-size: 16px;
+        }
 
-    .grid { display: grid; gap: 8px; }
-    .grid.cols-2 { grid-template-columns: 1fr 1fr; }
-    .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-    .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+        /* Contenedor principal del formulario */
+        .page {
+            max-width: 1100px;
+            margin: 1.5rem auto;
+            background: #fff;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, .05);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+        }
 
-    .row { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 10px; }
-    label { font-size: 12px; color: #334155; }
-    input, select, textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; font-size: 14px; }
-    textarea { min-height: 64px; }
+        /* Encabezado */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin-bottom: 0.75rem;
+        }
 
-    .table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-    .table th, .table td { border: 1px solid var(--border); padding: 8px; font-size: 13px; vertical-align: top; }
-    .table th { background: #eef4fb; text-align: left; }
+        header h1 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin: 0;
+        }
 
-    .radio-group { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
-    .radio-group.tight { gap: 10px; }
+        .today {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
-    .actions { display: flex; gap: 10px; justify-content: space-between; margin-top: 18px; }
-    button { border: none; padding: 10px 16px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; }
-    .primary { background: var(--primary); color: #fff; }
-    .ghost { background: #edf2f7; }
-    .muted { background: transparent; color: #475569; }
+        /* Secciones y títulos */
+        fieldset {
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.25rem;
+        }
 
-    .page-break { height: 1px; margin: 24px 0; border: none; border-top: 2px dashed var(--border); }
+        legend {
+            background: var(--primary);
+            color: #fff;
+            padding: 0.625rem 0.875rem;
+            font-weight: 700;
+            border-radius: 0.625rem;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+        }
 
-    .note { border: 2px solid var(--primary); border-radius: 12px; padding: 12px; background: #f0f6ff; }
-    .doc-list { margin: 8px 0 14px 20px; }
-    .doc-list li { margin: 4px 0; }
+        /* Layout de columnas */
+        .grid {
+            display: grid;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        
+        .grid.cols-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .grid.cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
 
-    .hr-header { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 12px; margin-top: 6px; }
-    .logo-box { height: 48px; border-radius: 8px; background: linear-gradient(180deg, #e6eef8, #d9e7fb); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #3b5b8a; }
-    .doc-title { text-align: right; font-weight: 800; font-size: 16px; letter-spacing: .3px; }
+        .grid.cols-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
 
-    /* Accesibilidad sin afectar diseño */
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 1px, 1px);
-      white-space: nowrap;
-      border: 0;
-    }
+        .row {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            align-items: center;
+            gap: 0.625rem;
+        }
+        
+        .row-alt {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
 
-    @media print {
-      body { background: #fff; }
-      .page { box-shadow: none; border: none; margin: 0; border-radius: 0; }
-      .actions { display: none; }
-      .page-break { page-break-after: always; border: 0; height: 0; margin: 0; }
-    }
-  </style>
+        /* Estilos de los inputs */
+        label {
+            font-size: 0.75rem;
+            color: #334155;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.625rem;
+            background: #fff;
+            font-size: 0.875rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(46, 121, 198, 0.2);
+        }
+
+        textarea {
+            min-height: 4rem;
+        }
+        
+        .input-inline {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .input-inline input {
+            width: auto;
+            flex: 1;
+        }
+
+        /* Estilos de tabla */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.375rem;
+        }
+
+        .table th, .table td {
+            border: 1px solid var(--border);
+            padding: 0.5rem;
+            font-size: 0.8125rem;
+            vertical-align: top;
+        }
+
+        .table th {
+            background: #eef4fb;
+            text-align: left;
+        }
+        
+        .table input {
+            border: none;
+            padding: 0;
+        }
+
+        /* Controles de radio/checkbox */
+        .radio-group {
+            display: flex;
+            gap: 1.125rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .radio-group label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.875rem;
+            color: var(--ink);
+            cursor: pointer;
+        }
+        
+        /* Botones y acciones */
+        .actions {
+            display: flex;
+            gap: 0.625rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+
+        button {
+            border: none;
+            padding: 0.625rem 1rem;
+            border-radius: 0.625rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .primary {
+            background: var(--primary);
+            color: #fff;
+        }
+        
+        .primary:hover {
+            background: #2361a8;
+        }
+
+        .ghost {
+            background: #edf2f7;
+            color: #334155;
+        }
+        
+        .ghost:hover {
+            background: #e2e8f0;
+        }
+
+        .muted {
+            background: transparent;
+            color: #475569;
+        }
+
+        /* Declaración */
+        .note {
+            border: 2px solid var(--primary);
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            background: #f0f6ff;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .doc-list {
+            margin: 0.5rem 0 0.875rem 1.25rem;
+            font-size: 0.875rem;
+        }
+
+        .doc-list li {
+            margin: 0.25rem 0;
+        }
+
+        /* Estilo para RRHH */
+        .hr-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 1.5rem;
+        }
+
+        .logo-box {
+            height: 3rem;
+            border-radius: 0.5rem;
+            background: linear-gradient(180deg, #e6eef8, #d9e7fb);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #3b5b8a;
+            padding: 0 1rem;
+        }
+        
+        .doc-title {
+            font-weight: 800;
+            font-size: 1rem;
+            letter-spacing: 0.3px;
+        }
+        
+        .form-send-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #34d399;
+            border-radius: 0.5rem;
+            display: none;
+        }
+        
+        .doc-upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .doc-upload-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        /* Estilo para el input de tipo file */
+        input[type="file"] {
+            border: 1px dashed var(--border);
+            background: #fff;
+            padding: 1rem;
+            cursor: pointer;
+            text-align: center;
+            color: #64748b;
+        }
+
+        input[type="file"]::file-selector-button {
+            display: none;
+        }
+
+        /* Accesibilidad sin afectar diseño */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 1px, 1px);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        /* Media queries para responsividad */
+        @media (max-width: 768px) {
+            .page {
+                /* .. */
+            }
+            .grid.cols-2, .grid.cols-3, .grid.cols-4, .grid.cols-4 {
+                grid-template-columns: 1fr;
+            }
+            .row {
+                grid-template-columns: 1fr;
+            }
+            .row label {
+                margin-bottom: -0.25rem;
+            }
+            .hr-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            .doc-title {
+                text-align: left;
+            }
+            
+            .input-inline {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.25rem;
+            }
+        }
+
+        /* Estilos para impresión */
+        @media print {
+            body {
+                background: #fff;
+            }
+
+            .page {
+                box-shadow: none;
+                border: none;
+                margin: 0;
+                border-radius: 0;
+            }
+
+            .actions, .form-send-message {
+                display: none;
+            }
+        }
+    </style>
 </head>
 <body>
-  <form class="page" action="https://formsubmit.co/your-email@example.com" method="POST" aria-labelledby="form-title">
-    <header>
-      <h1 id="form-title">POR FAVOR LLENE ESTA SOLICITUD · LA INFORMACIÓN QUE NOS PROPORCIONE SERÁ PARA USO EXCLUSIVO DE LA EMPRESA</h1>
-      <div class="today">
-        <label for="fecha_hoy">FECHA DE HOY:</label>
-        <input id="fecha_hoy" name="fecha_hoy" type="date" />
-      </div>
-    </header>
+    <div class="page">
+        <form id="employment-form" action="https://formsubmit.co/your-computo@serviestibasa.com" method="POST" aria-labelledby="form-title" enctype="multipart/form-data">
+            <header>
+                <h1 id="form-title">SOLICITUD DE EMPLEO</h1>
+                <div class="today">
+                    <label for="fecha_hoy">FECHA DE HOY:</label>
+                    <input id="fecha_hoy" name="fecha_hoy" type="date" />
+                </div>
+            </header>
 
-    <!-- ========================= PÁGINA 1: DATOS PERSONALES ========================= -->
-    <div class="bar" id="datos-personales">Datos Personales</div>
-    <section aria-labelledby="datos-personales">
-      <div class="grid cols-2">
-        <div class="row"><label for="ap_paterno">Apellido Paterno:</label><input id="ap_paterno" type="text" name="ap_paterno" autocomplete="family-name" /></div>
-        <div class="row"><label for="ap_materno">Apellido Materno:</label><input id="ap_materno" type="text" name="ap_materno" autocomplete="additional-name" /></div>
-        <div class="row"><label for="nombres">Nombres:</label><input id="nombres" type="text" name="nombres" autocomplete="given-name" /></div>
-        <div class="row"><label for="edad">Edad:</label><input id="edad" type="number" name="edad" min="0" inputmode="numeric" /></div>
-      </div>
+            <p style="font-size: 0.875rem; margin-top: -0.5rem;">
+                POR FAVOR LLENE ESTA SOLICITUD EN LETRA LEGIBLE • LA INFORMACIÓN QUE NOS PROPORCIONE SERÁ PARA USO EXCLUSIVO DE LA EMPRESA
+            </p>
 
-      <div class="grid cols-4">
-        <div class="row"><label for="direccion">Dirección residencial:</label><input id="direccion" type="text" name="direccion" autocomplete="address-line1" /></div>
-        <div class="row"><label for="ciudad">Ciudad:</label><input id="ciudad" type="text" name="ciudad" autocomplete="address-level2" /></div>
-        <div class="row"><label>Sexo:</label>
-          <div class="radio-group" role="radiogroup" aria-label="Sexo">
-            <label for="sexo_f"><input id="sexo_f" type="radio" name="sexo" value="F" /> F</label>
-            <label for="sexo_m"><input id="sexo_m" type="radio" name="sexo" value="M" /> M</label>
-          </div>
+            <fieldset>
+                <legend>Datos Personales</legend>
+                <div class="grid cols-3" style="margin-top: 0;">
+                    <div class="row-alt">
+                        <label for="ap_paterno">Apellido Paterno:</label>
+                        <input id="ap_paterno" type="text" name="ap_paterno" autocomplete="family-name" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="ap_materno">Apellido Materno:</label>
+                        <input id="ap_materno" type="text" name="ap_materno" autocomplete="additional-name" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="nombres">Nombres:</label>
+                        <input id="nombres" type="text" name="nombres" autocomplete="given-name" />
+                    </div>
+                </div>
+
+                <div class="grid cols-4">
+                    <div class="row-alt" style="grid-column: span 2;">
+                        <label for="direccion">Dirección residencial:</label>
+                        <input id="direccion" type="text" name="direccion" autocomplete="address-line1" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="ciudad">Ciudad:</label>
+                        <input id="ciudad" type="text" name="ciudad" autocomplete="address-level2" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="edad">Edad:</label>
+                        <input id="edad" type="number" name="edad" min="0" inputmode="numeric" />
+                    </div>
+                </div>
+
+                <div class="grid cols-4">
+                    <div class="row-alt">
+                        <label for="celular">Celular:</label>
+                        <input id="celular" type="tel" name="celular" autocomplete="tel" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="telefono">Teléfono:</label>
+                        <input id="telefono" type="tel" name="telefono" autocomplete="tel" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="estatura">Estatura (cm):</label>
+                        <input id="estatura" type="number" name="estatura" inputmode="numeric" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="peso">Peso (kg):</label>
+                        <input id="peso" type="number" name="peso" step="0.1" inputmode="decimal" />
+                    </div>
+                </div>
+
+                <div class="grid cols-3">
+                    <div class="row-alt">
+                        <label for="talla_sueter">Talla Suéter:</label>
+                        <input id="talla_sueter" type="text" name="talla_sueter" style="max-width: 120px;" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="talla_pantalon">Talla Pantalón:</label>
+                        <input id="talla_pantalon" type="text" name="talla_pantalon" style="max-width: 120px;" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="talla_botas">Talla Botas:</label>
+                        <input id="talla_botas" type="text" name="talla_botas" style="max-width: 120px;" />
+                    </div>
+                </div>
+                
+                <div class="grid cols-4">
+                    <div class="row-alt">
+                        <label for="fecha_nac">Fecha de Nacimiento:</label>
+                        <input id="fecha_nac" type="date" name="fecha_nac" autocomplete="bday" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="lugar_nac">Lugar de Nacimiento:</label>
+                        <input id="lugar_nac" type="text" name="lugar_nac" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="nacionalidad">Nacionalidad:</label>
+                        <input id="nacionalidad" type="text" name="nacionalidad" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="estado_civil">Estado Civil:</label>
+                        <input id="estado_civil" type="text" name="estado_civil" />
+                    </div>
+                </div>
+                
+                <div class="grid cols-4">
+                    <div class="row-alt">
+                        <label for="cedula">No. Cédula:</label>
+                        <input id="cedula" type="text" name="cedula" autocomplete="off" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="correo">Correo electrónico:</label>
+                        <input id="correo" type="email" name="correo" autocomplete="email" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="seguro">No. Seguro Social:</label>
+                        <input id="seguro" type="text" name="seguro" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="sangre">Tipo de sangre:</label>
+                        <input id="sangre" type="text" name="sangre" />
+                    </div>
+                </div>
+
+                <div class="grid cols-4">
+                    <div class="row-alt">
+                        <label>Sexo:</label>
+                        <div class="radio-group" role="radiogroup" aria-label="Sexo">
+                            <label><input type="radio" name="sexo" value="F" /> F</label>
+                            <label><input type="radio" name="sexo" value="M" /> M</label>
+                        </div>
+                    </div>
+                    <div class="row-alt">
+                        <label>Licencia de Conducir:</label>
+                        <div class="radio-group" role="radiogroup" aria-label="Licencia de Conducir">
+                            <label><input type="radio" name="licencia" value="si"> Sí</label>
+                            <label><input type="radio" name="licencia" value="no"> No</label>
+                        </div>
+                    </div>
+                    <div class="row-alt">
+                        <label for="lic_tipo">Tipo (licencia):</label>
+                        <input id="lic_tipo" type="text" name="lic_tipo" />
+                    </div>
+                    <div class="row-alt">
+                        <label for="lic_venc">Venc. licencia:</label>
+                        <input id="lic_venc" type="date" name="lic_venc" />
+                    </div>
+                </div>
+
+                <div class="grid cols-2" style="margin-top: 1rem;">
+                    <div class="row-alt">
+                        <label>Posee Vehículo:</label>
+                        <div class="radio-group" role="radiogroup" aria-label="Posee Vehículo">
+                            <label><input type="radio" name="vehiculo" value="si"> Sí</label>
+                            <label><input type="radio" name="vehiculo" value="no"> No</label>
+                        </div>
+                    </div>
+                    <div class="row-alt">
+                        <label>Si es Extranjero: ¿Posee permiso para laborar en territorio panameño?</label>
+                        <div class="radio-group" role="radiogroup" aria-label="Permiso para laborar">
+                            <label><input type="radio" name="permiso" value="si"> Sí</label>
+                            <label><input type="radio" name="permiso" value="no"> No</label>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Personas que dependen de usted</legend>
+                <table class="table" aria-labelledby="dependientes-body">
+                    <caption class="sr-only">Listado de personas dependientes</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Nombre</th>
+                            <th scope="col" style="width: 80px;">Edad</th>
+                            <th scope="col" style="width: 150px;">Parentesco</th>
+                            <th scope="col">Vive con</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dependientes-body">
+                        <tr>
+                            <td><input type="text" name="dep_nombre[]" aria-label="Nombre del dependiente"></td>
+                            <td><input type="number" name="dep_edad[]" min="0" aria-label="Edad del dependiente"></td>
+                            <td><input type="text" name="dep_parentesco[]" aria-label="Parentesco del dependiente"></td>
+                            <td>
+                                <div class="radio-group" role="radiogroup" aria-label="Vive con el dependiente">
+                                    <label><input type="radio" name="vive_con_0" value="padres"> Sus Padres</label>
+                                    <label><input type="radio" name="vive_con_0" value="familia"> Su Familia</label>
+                                    <label><input type="radio" name="vive_con_0" value="parientes"> Parientes</label>
+                                    <label><input type="radio" name="vive_con_0" value="solo"> Solo</label>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="actions" style="justify-content: flex-start; margin-top: 1rem;">
+                    <button class="ghost" type="button" onclick="agregarFila('dependientes-body')">Añadir dependiente</button>
+                    <button class="muted" type="button" onclick="eliminarFila('dependientes-body')">Eliminar último</button>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Estado de Salud</legend>
+                <div class="grid cols-3">
+                    <div class="row"><label>Padece Enfermedad Crónica:</label><div class="radio-group" role="radiogroup" aria-label="Enfermedad Crónica"><label><input type="radio" name="cronica" value="no"> No</label><label><input type="radio" name="cronica" value="si"> Sí</label></div></div>
+                    <div class="row"><label for="otro_salud">Otro (Explique):</label><input id="otro_salud" type="text" name="otro_salud" /></div>
+                    <div class="row"><label for="usa_lentes">Usa Lentes:</label><div class="radio-group" role="radiogroup" aria-label="Usa lentes"><label><input type="radio" name="lentes" value="si"> Sí</label><label><input type="radio" name="lentes" value="no"> No</label></div></div>
+                </div>
+                <div class="grid cols-3">
+                    <div class="row"><label for="fuma">Fuma:</label><div class="radio-group" role="radiogroup" aria-label="Fuma"><label><input type="radio" name="fuma" value="si"> Sí</label><label><input type="radio" name="fuma" value="no"> No</label></div></div>
+                    <div class="row"><label for="toma">Toma (alcohol/medicación):</label><input id="toma" type="text" name="toma" /></div>
+                </div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>Datos Familiares</legend>
+                <table class="table">
+                    <caption class="sr-only">Datos de familiares cercanos</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 15%;">Parentesco</th>
+                            <th scope="col">Nombre</th>
+                            <th scope="col" style="width: 10%;">Edad</th>
+                            <th scope="col">Dirección</th>
+                            <th scope="col" style="width: 20%;">Ocupación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row">Padre:</th>
+                            <td><input type="text" name="padre_nombre" aria-label="Nombre del padre"></td>
+                            <td><input type="number" name="padre_edad" min="0" aria-label="Edad del padre"></td>
+                            <td><input type="text" name="padre_dir" aria-label="Dirección del padre"></td>
+                            <td><input type="text" name="padre_ocup" aria-label="Ocupación del padre"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Madre:</th>
+                            <td><input type="text" name="madre_nombre" aria-label="Nombre de la madre"></td>
+                            <td><input type="number" name="madre_edad" min="0" aria-label="Edad de la madre"></td>
+                            <td><input type="text" name="madre_dir" aria-label="Dirección de la madre"></td>
+                            <td><input type="text" name="madre_ocup" aria-label="Ocupación de la madre"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Esposa(o):</th>
+                            <td><input type="text" name="esposo_nombre" aria-label="Nombre de esposo(a)"></td>
+                            <td><input type="number" name="esposo_edad" min="0" aria-label="Edad de esposo(a)"></td>
+                            <td><input type="text" name="esposo_dir" aria-label="Dirección de esposo(a)"></td>
+                            <td><input type="text" name="esposo_ocup" aria-label="Ocupación de esposo(a)"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Hijo(s):</th>
+                            <td><input type="text" name="hijos_nombre" aria-label="Nombre de hijo(s)"></td>
+                            <td><input type="number" name="hijos_edad" min="0" aria-label="Edad de hijo(s)"></td>
+                            <td><input type="text" name="hijos_dir" aria-label="Dirección de hijo(s)"></td>
+                            <td><input type="text" name="hijos_ocup" aria-label="Ocupación de hijo(s)"></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="grid cols-2" style="margin-top:1rem">
+                    <div class="row"><label for="emerg_contacto">En caso de emergencia contactar a:</label><input id="emerg_contacto" type="text" name="emerg_contacto"></div>
+                    <div class="row"><label for="emerg_telefono">Teléfono:</label><input id="emerg_telefono" type="tel" name="emerg_telefono" autocomplete="tel"></div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Escolaridad</legend>
+                <table class="table">
+                    <caption class="sr-only">Información de estudios realizados</caption>
+                    <thead>
+                        <tr><th scope="col">Nivel</th><th scope="col">Nombre de la Escuela</th><th scope="col">Dirección</th><th scope="col">Fechas Desde</th><th scope="col">Fechas Hasta</th><th scope="col">Título Obtenido</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><th scope="row">Primaria:</th><td><input type="text" name="pri_escuela" aria-label="Nombre escuela primaria"></td><td><input type="text" name="pri_dir" aria-label="Dirección primaria"></td><td><input type="date" name="pri_desde" aria-label="Desde primaria"></td><td><input type="date" name="pri_hasta" aria-label="Hasta primaria"></td><td><input type="text" name="pri_titulo" aria-label="Título primaria"></td></tr>
+                        <tr><th scope="row">Secundaria:</th><td><input type="text" name="sec_escuela" aria-label="Nombre escuela secundaria"></td><td><input type="text" name="sec_dir" aria-label="Dirección secundaria"></td><td><input type="date" name="sec_desde" aria-label="Desde secundaria"></td><td><input type="date" name="sec_hasta" aria-label="Hasta secundaria"></td><td><input type="text" name="sec_titulo" aria-label="Título secundaria"></td></tr>
+                        <tr><th scope="row">Universidad:</th><td><input type="text" name="uni_escuela" aria-label="Nombre universidad"></td><td><input type="text" name="uni_dir" aria-label="Dirección universidad"></td><td><input type="date" name="uni_desde" aria-label="Desde universidad"></td><td><input type="date" name="uni_hasta" aria-label="Hasta universidad"></td><td><input type="text" name="uni_titulo" aria-label="Título universidad"></td></tr>
+                        <tr><th scope="row">Otro:</th><td><input type="text" name="otro_escuela" aria-label="Nombre otro estudio"></td><td><input type="text" name="otro_dir" aria-label="Dirección otro"></td><td><input type="date" name="otro_desde" aria-label="Desde otro"></td><td><input type="date" name="otro_hasta" aria-label="Hasta otro"></td><td><input type="text" name="otro_titulo" aria-label="Título otro"></td></tr>
+                    </tbody>
+                </table>
+                <div class="row" style="margin-top:1rem;"><label>¿Está usted actualmente estudiando?</label><div class="radio-group" role="radiogroup" aria-label="Actualmente estudiando"><label><input type="radio" name="estudia" value="si"> Sí</label><label><input type="radio" name="estudia" value="no"> No</label></div></div>
+                <div class="grid cols-4">
+                    <div class="row"><label for="centro_edu">Centro Educativo:</label><input id="centro_edu" type="text" name="centro_edu"></div>
+                    <div class="row"><label for="horario_estudio">Horario:</label><input id="horario_estudio" type="text" name="horario_estudio"></div>
+                    <div class="row"><label for="curso_carrera">Curso o Carrera:</label><input id="curso_carrera" type="text" name="curso_carrera"></div>
+                    <div class="row"><label for="grado">Grado:</label><input id="grado" type="text" name="grado"></div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Empleo Actual y Anteriores</legend>
+                <table class="table">
+                    <caption class="sr-only">Historial de empleos</caption>
+                    <thead>
+                        <tr><th scope="col">Concepto</th><th scope="col">Empleo Actual o Último</th><th scope="col">Empleo Anterior</th><th scope="col">Empleo Anterior</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><th scope="row">Nombre de la Compañía</th><td><input type="text" name="emp1_nombre" aria-label="Compañía empleo actual"></td><td><input type="text" name="emp2_nombre" aria-label="Compañía empleo anterior 1"></td><td><input type="text" name="emp3_nombre" aria-label="Compañía empleo anterior 2"></td></tr>
+                        <tr><th scope="row">Tiempo de servicio</th><td><input type="text" name="emp1_tiempo" aria-label="Tiempo empleo actual"></td><td><input type="text" name="emp2_tiempo" aria-label="Tiempo empleo anterior 1"></td><td><input type="text" name="emp3_tiempo" aria-label="Tiempo empleo anterior 2"></td></tr>
+                        <tr><th scope="row">Dirección</th><td><input type="text" name="emp1_dir" aria-label="Dirección empleo actual"></td><td><input type="text" name="emp2_dir" aria-label="Dirección empleo anterior 1"></td><td><input type="text" name="emp3_dir" aria-label="Dirección empleo anterior 2"></td></tr>
+                        <tr><th scope="row">Teléfono</th><td><input type="text" name="emp1_tel" aria-label="Teléfono empleo actual"></td><td><input type="text" name="emp2_tel" aria-label="Teléfono empleo anterior 1"></td><td><input type="text" name="emp3_tel" aria-label="Teléfono empleo anterior 2"></td></tr>
+                        <tr><th scope="row">Puesto</th><td><input type="text" name="emp1_puesto" aria-label="Puesto empleo actual"></td><td><input type="text" name="emp2_puesto" aria-label="Puesto empleo anterior 1"></td><td><input type="text" name="emp3_puesto" aria-label="Puesto empleo anterior 2"></td></tr>
+                        <tr>
+                            <th scope="row">Salario</th>
+                            <td>
+                                <input type="text" name="emp1_sal_ini" placeholder="Inicial" aria-label="Salario inicial empleo actual">
+                                <input type="text" name="emp1_sal_fin" placeholder="Final" aria-label="Salario final empleo actual">
+                            </td>
+                            <td>
+                                <input type="text" name="emp2_sal_ini" placeholder="Inicial" aria-label="Salario inicial empleo anterior 1">
+                                <input type="text" name="emp2_sal_fin" placeholder="Final" aria-label="Salario final empleo anterior 1">
+                            </td>
+                            <td>
+                                <input type="text" name="emp3_sal_ini" placeholder="Inicial" aria-label="Salario inicial empleo anterior 2">
+                                <input type="text" name="emp3_sal_fin" placeholder="Final" aria-label="Salario final empleo anterior 2">
+                            </td>
+                        </tr>
+                        <tr><th scope="row">Motivo de salida</th><td><input type="text" name="emp1_salida" aria-label="Motivo de salida empleo actual"></td><td><input type="text" name="emp2_salida" aria-label="Motivo de salida empleo anterior 1"></td><td><input type="text" name="emp3_salida" aria-label="Motivo de salida empleo anterior 2"></td></tr>
+                        <tr><th scope="row">Jefe Inmediato</th><td><input type="text" name="emp1_jefe" aria-label="Jefe inmediato empleo actual"></td><td><input type="text" name="emp2_jefe" aria-label="Jefe inmediato empleo anterior 1"></td><td><input type="text" name="emp3_jefe" aria-label="Jefe inmediato empleo anterior 2"></td></tr>
+                        <tr><th scope="row">Puesto del Jefe</th><td><input type="text" name="emp1_puesto_jefe" aria-label="Puesto jefe inmediato empleo actual"></td><td><input type="text" name="emp2_puesto_jefe" aria-label="Puesto jefe inmediato empleo anterior 1"></td><td><input type="text" name="emp3_puesto_jefe" aria-label="Puesto jefe inmediato empleo anterior 2"></td></tr>
+                    </tbody>
+                </table>
+            </fieldset>
+
+            <fieldset>
+                <legend>Referencias (No Familiares)</legend>
+                <table class="table" id="referencias-table">
+                    <caption class="sr-only">Referencias personales no familiares</caption>
+                    <thead>
+                        <tr><th scope="col">Nombre</th><th scope="col">Parentesco</th><th scope="col">Dirección</th><th scope="col">Teléfono</th><th scope="col">Ocupación</th><th scope="col">Tiempo de Conocerlo</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><input type="text" name="ref1_nombre" aria-label="Nombre referencia 1"></td><td><input type="text" name="ref1_parentesco" aria-label="Parentesco referencia 1"></td><td><input type="text" name="ref1_dir" aria-label="Dirección referencia 1"></td><td><input type="text" name="ref1_tel" aria-label="Teléfono referencia 1"></td><td><input type="text" name="ref1_ocup" aria-label="Ocupación referencia 1"></td><td><input type="text" name="ref1_tiempo" aria-label="Tiempo de conocerlo referencia 1"></td></tr>
+                        <tr><td><input type="text" name="ref2_nombre" aria-label="Nombre referencia 2"></td><td><input type="text" name="ref2_parentesco" aria-label="Parentesco referencia 2"></td><td><input type="text" name="ref2_dir" aria-label="Dirección referencia 2"></td><td><input type="text" name="ref2_tel" aria-label="Teléfono referencia 2"></td><td><input type="text" name="ref2_ocup" aria-label="Ocupación referencia 2"></td><td><input type="text" name="ref2_tiempo" aria-label="Tiempo de conocerlo referencia 2"></td></tr>
+                    </tbody>
+                </table>
+            </fieldset>
+
+            <fieldset>
+                <legend>Datos Generales</legend>
+                <div class="grid cols-2">
+                    <div class="row"><label for="como_enterado">Cómo se enteró del empleo:</label><input id="como_enterado" type="text" name="como_enterado"></div>
+                    <div class="row"><label>Tiene familiares o conocidos en esta empresa:</label><div class="radio-group" role="radiogroup" aria-label="Familiares en la empresa"><label><input type="radio" name="familiares_empresa" value="si"> Sí</label><label><input type="radio" name="familiares_empresa" value="no"> No</label></div></div>
+                </div>
+                <div class="grid cols-2">
+                    <div class="row"><label for="nombre_familiar">Nombre:</label><input id="nombre_familiar" type="text" name="nombre_familiar"></div>
+                    <div class="row"><label for="parentesco_familiar">Parentesco:</label><input id="parentesco_familiar" type="text" name="parentesco_familiar"></div>
+                </div>
+                <div class="grid cols-2">
+                    <div class="row"><label>¿Ha trabajado anteriormente en Serviestiba o PPC?</label><div class="radio-group" role="radiogroup" aria-label="Trabajo previo en Serviestiba o PPC"><label><input type="radio" name="trabajo_prev" value="si"> Sí</label><label><input type="radio" name="trabajo_prev" value="no"> No</label></div></div>
+                    <div class="row"><label for="motivo_salida_prev">Motivo de salida:</label><input id="motivo_salida_prev" type="text" name="motivo_salida_prev"></div>
+                </div>
+                <div class="grid cols-2">
+                    <div class="row"><label>¿Pertenece a algún sindicato?</label><div class="radio-group" role="radiogroup" aria-label="Pertenece a sindicato"><label><input type="radio" name="sindicato" value="si"> Sí</label><label><input type="radio" name="sindicato" value="no"> No</label></div></div>
+                    <div class="row"><label for="cual_sindicato">¿Cuál?</label><input id="cual_sindicato" type="text" name="cual_sindicato"></div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Información Adicional</legend>
+                <div class="grid cols-2">
+                    <div class="row"><label>Disponibilidad para viajar:</label><div class="radio-group" role="radiogroup" aria-label="Disponibilidad para viajar"><label><input type="radio" name="viajar" value="si"> Sí</label><label><input type="radio" name="viajar" value="no"> No</label></div></div>
+                    <div class="row"><label for="viajar_razon">Por qué:</label><input id="viajar_razon" type="text" name="viajar_razon" aria-label="Razón para disponibilidad de viaje"></div>
+                </div>
+            </fieldset>
+            
+            <div class="note" role="note" aria-label="Declaración del solicitante">
+                <strong>Declaración del solicitante:</strong>
+                Certifico que toda la información que he previsto en esta solicitud de empleo es verdadera, completa y correcta.
+                Autorizo a la empresa para que verifique mis referencias laborales y personales, así como la veracidad de mis títulos,
+                acreditaciones y licencias. Entiendo y acepto que la empresa se reserva de tomar acciones disciplinarias que estime
+                convenientes en caso de que encuentre información dada de forma incompleta, incorrecta o injustificada.
+                <div style="margin-top: 10px;">
+                    <label for="firma" class="sr-only">Firma:</label>
+                    <input id="firma" type="text" name="firma" placeholder="Firma del solicitante" style="height:48px" aria-label="Firma">
+                </div>
+            </div>
+
+            <div style="margin-top:1.5rem">
+                <strong>Documentos que debe incluir el solicitante:</strong>
+                <div class="doc-upload-grid">
+                    <div class="doc-upload-item">
+                        <label for="cedula_file">Copia de Cédula:</label>
+                        <input type="file" id="cedula_file" name="cedula_file" accept="image/*,application/pdf" multiple />
+                    </div>
+                    <div class="doc-upload-item">
+                        <label for="licencia_file">Copia de la Licencia:</label>
+                        <input type="file" id="licencia_file" name="licencia_file" accept="image/*,application/pdf" multiple />
+                    </div>
+                    <div class="doc-upload-item">
+                        <label for="diplomas_file">Copia de Diplomas:</label>
+                        <input type="file" id="diplomas_file" name="diplomas_file" accept="image/*,application/pdf" multiple />
+                    </div>
+                    <div class="doc-upload-item">
+                        <label for="record_policivo_file">Record policivo:</label>
+                        <input type="file" id="record_policivo_file" name="record_policivo_file" accept="image/*,application/pdf" multiple />
+                    </div>
+                    <div class="doc-upload-item">
+                        <label for="cartas_ref_file">Cartas de referencias:</label>
+                        <input type="file" id="cartas_ref_file" name="cartas_ref_file" accept="image/*,application/pdf" multiple />
+                    </div>
+                    <div class="doc-upload-item">
+                        <label for="cta_bgeneral">Número de Cuenta de Banco General (Si Posee):</label>
+                        <input type="text" id="cta_bgeneral" name="cta_bgeneral" style="width: 100%;" aria-label="Número de Cuenta de Banco General">
+                    </div>
+                    <div class="doc-upload-item">
+                        <label for="otros_file">Otros documentos:</label>
+                        <input type="file" id="otros_file" name="otros_file" accept="image/*,application/pdf" multiple />
+                    </div>
+                </div>
+            </div>
+            
+            <input type="hidden" name="_captcha" value="false">
+            <input type="hidden" name="_next" value="https://tu-sitio-web.com/gracias.html">
+            
+            <div class="actions">
+                <button class="ghost" type="reset">Limpiar formulario</button>
+                <div style="flex:1"></div>
+                <button class="primary" type="submit">Enviar Solicitud</button>
+            </div>
+        </form>
+
+        <div style="margin-top: 2rem;">
+            <div class="hr-header">
+                <div class="logo-box">SERVI · ESTIBA, S.A.</div>
+                <div class="doc-title">PARA USO EXCLUSIVO DE RECURSOS HUMANOS</div>
+            </div>
+            <fieldset>
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <th scope="row" style="width: 25%;">Posición a la que aplica:</th>
+                            <td><input type="text" name="hr_posicion" aria-label="Posición a la que aplica (RRHH)"></td>
+                            <th scope="row" style="width: 20%;">Salario aspirado:</th>
+                            <td><input type="text" name="hr_salario_asp" aria-label="Salario aspirado (RRHH)"></td>
+                            <th scope="row" style="width: 15%;">Disponibilidad:</th>
+                            <td><input type="text" name="hr_disponibilidad" aria-label="Disponibilidad (RRHH)"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </fieldset>
+
+            <fieldset>
+                <legend>Evaluación de Entrevista</legend>
+                <div class="grid cols-2" style="margin-top: 0;">
+                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
+                        <p style="font-weight: 700;">ACTITUD DEL ENTREVISTADO</p>
+                        <div class="radio-group" role="radiogroup" aria-label="Actitud del entrevistado">
+                            <label><input type="radio" name="hr_actitud" value="buena"> Buena</label>
+                            <label><input type="radio" name="hr_actitud" value="regular"> Regular</label>
+                            <label><input type="radio" name="hr_actitud" value="mala"> Mala</label>
+                        </div>
+                    </div>
+                    <div>
+                        <p style="font-weight: 700;">OBSERVACIONES</p>
+                        <textarea name="hr_obs_actitud" aria-label="Observaciones sobre actitud (RRHH)"></textarea>
+                    </div>
+                </div>
+
+                <div class="grid cols-2" style="margin-top: 1rem;">
+                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
+                        <p style="font-weight: 700;">DOMINIO DE FUNCIONES Y CONOCIMIENTOS</p>
+                        <div class="radio-group" role="radiogroup" aria-label="Dominio de funciones y conocimientos">
+                            <label><input type="radio" name="hr_dominio" value="buena"> Buena</label>
+                            <label><input type="radio" name="hr_dominio" value="regular"> Regular</label>
+                            <label><input type="radio" name="hr_dominio" value="mala"> Mala</label>
+                        </div>
+                    </div>
+                    <div>
+                        <p style="font-weight: 700;">OBSERVACIONES</p>
+                        <textarea name="hr_obs_dominio" aria-label="Observaciones sobre dominio (RRHH)"></textarea>
+                    </div>
+                </div>
+
+                <div class="grid cols-2" style="margin-top: 1rem;">
+                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
+                        <p style="font-weight: 700;">TOMA DE DECISIONES</p>
+                        <div class="radio-group" role="radiogroup" aria-label="Toma de decisiones">
+                            <label><input type="radio" name="hr_decisiones" value="buena"> Buena</label>
+                            <label><input type="radio" name="hr_decisiones" value="regular"> Regular</label>
+                            <label><input type="radio" name="hr_decisiones" value="mala"> Mala</label>
+                        </div>
+                    </div>
+                    <div>
+                        <p style="font-weight: 700;">OBSERVACIONES</p>
+                        <textarea name="hr_obs_decisiones" aria-label="Observaciones sobre decisiones (RRHH)"></textarea>
+                    </div>
+                </div>
+
+                <div class="grid cols-2" style="margin-top: 1rem;">
+                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
+                        <p style="font-weight: 700;">INFLUENCIA DE LIDERAZGO</p>
+                        <div class="radio-group" role="radiogroup" aria-label="Influencia de liderazgo">
+                            <label><input type="radio" name="hr_liderazgo" value="buena"> Buena</label>
+                            <label><input type="radio" name="hr_liderazgo" value="regular"> Regular</label>
+                            <label><input type="radio" name="hr_liderazgo" value="mala"> Mala</label>
+                        </div>
+                    </div>
+                    <div>
+                        <p style="font-weight: 700;">OBSERVACIONES</p>
+                        <textarea name="hr_obs_liderazgo" aria-label="Observaciones sobre liderazgo (RRHH)"></textarea>
+                    </div>
+                </div>
+
+                <div class="grid cols-2" style="margin-top: 1rem;">
+                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
+                        <p style="font-weight: 700;">PARTICIPACIÓN EN EQUIPO</p>
+                        <div class="radio-group" role="radiogroup" aria-label="Participación en equipo">
+                            <label><input type="radio" name="hr_equipo" value="buena"> Buena</label>
+                            <label><input type="radio" name="hr_equipo" value="regular"> Regular</label>
+                            <label><input type="radio" name="hr_equipo" value="mala"> Mala</label>
+                        </div>
+                    </div>
+                    <div>
+                        <p style="font-weight: 700;">OBSERVACIONES</p>
+                        <textarea name="hr_obs_equipo" aria-label="Observaciones sobre participación en equipo (RRHH)"></textarea>
+                    </div>
+                </div>
+
+                <div class="grid cols-2" style="margin-top: 1rem;">
+                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
+                        <p style="font-weight: 700;">DESEMPEÑO DEL SOLICITANTE</p>
+                        <div class="radio-group" role="radiogroup" aria-label="Desempeño del solicitante">
+                            <label><input type="radio" name="hr_desempeno" value="buena"> Buena</label>
+                            <label><input type="radio" name="hr_desempeno" value="regular"> Regular</label>
+                            <label><input type="radio" name="hr_desempeno" value="mala"> Mala</label>
+                        </div>
+                    </div>
+                    <div>
+                        <p style="font-weight: 700;">OBSERVACIONES</p>
+                        <textarea name="hr_obs_desempeno" aria-label="Observaciones sobre desempeño (RRHH)"></textarea>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Comentarios del Entrevistador</legend>
+                <textarea name="hr_comentarios" aria-label="Comentarios del entrevistador" style="min-height: 100px;"></textarea>
+            </fieldset>
+
+            <fieldset>
+                <legend>Decisión Final</legend>
+                <div class="grid cols-2">
+                    <div class="row"><label for="posicion_aprobada">POSICIÓN APROBADA:</label><input id="posicion_aprobada" type="text" name="posicion_aprobada"></div>
+                    <div class="row"><label for="salario_aprobado">SALARIO APROBADO:</label><input id="salario_aprobado" type="text" name="salario_aprobado"></div>
+                    <div class="row"><label for="fecha_ingreso">FECHA DE INGRESO:</label><input id="fecha_ingreso" type="date" name="fecha_ingreso"></div>
+                    <div class="row"><label for="hr_otros">OTROS:</label><input id="hr_otros" type="text" name="hr_otros"></div>
+                </div>
+            </fieldset>
+            
+            <div style="margin-top: 1rem;">
+                <strong>VISTO BUENO:</strong> <input type="text" name="visto_bueno" aria-label="Visto Bueno de RRHH" style="width: 100%; margin-top: 0.5rem;">
+            </div>
         </div>
-        <div class="row"><label for="peso">Peso (kg):</label><input id="peso" type="number" name="peso" step="0.1" inputmode="decimal" /></div>
-      </div>
 
-      <div class="grid cols-4">
-        <div class="row"><label for="celular">Celular:</label><input id="celular" type="tel" name="celular" autocomplete="tel" /></div>
-        <div class="row"><label for="telefono">Teléfono:</label><input id="telefono" type="tel" name="telefono" autocomplete="tel" /></div>
-        <div class="row"><label for="estatura">Estatura (cm):</label><input id="estatura" type="number" name="estatura" inputmode="numeric" /></div>
-        <div class="row"><label for="talla_botas">Talla Botas:</label><input id="talla_botas" type="text" name="talla_botas" /></div>
-      </div>
-
-      <div class="grid cols-4">
-        <div class="row"><label for="talla_sueter">Talla Suéter:</label><input id="talla_sueter" type="text" name="talla_sueter" /></div>
-        <div class="row"><label for="talla_pantalon">Talla Pantalón:</label><input id="talla_pantalon" type="text" name="talla_pantalon" /></div>
-        <div class="row"><label for="fecha_nac">Fecha de Nacimiento:</label><input id="fecha_nac" type="date" name="fecha_nac" autocomplete="bday" /></div>
-        <div class="row"><label for="lugar_nac">Lugar de Nacimiento:</label><input id="lugar_nac" type="text" name="lugar_nac" /></div>
-      </div>
-
-      <div class="grid cols-4">
-        <div class="row"><label for="nacionalidad">Nacionalidad:</label><input id="nacionalidad" type="text" name="nacionalidad" /></div>
-        <div class="row"><label for="estado_civil">Estado Civil:</label><input id="estado_civil" type="text" name="estado_civil" /></div>
-        <div class="row"><label for="cedula">No. Cédula:</label><input id="cedula" type="text" name="cedula" autocomplete="off" /></div>
-        <div class="row"><label for="correo">Correo electrónico:</label><input id="correo" type="email" name="correo" autocomplete="email" /></div>
-      </div>
-
-      <div class="grid cols-3">
-        <div class="row"><label for="seguro">No. Seguro Social:</label><input id="seguro" type="text" name="seguro" /></div>
-        <div class="row"><label for="sangre">Tipo de sangre:</label><input id="sangre" type="text" name="sangre" /></div>
-        <div class="row"><label>Licencia de Conducir:</label>
-          <div class="radio-group" role="radiogroup" aria-label="Licencia de Conducir">
-            <label for="licencia_si"><input id="licencia_si" type="radio" name="licencia" value="si"> Sí</label>
-            <label for="licencia_no"><input id="licencia_no" type="radio" name="licencia" value="no"> No</label>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid cols-3">
-        <div class="row"><label for="lic_tipo">Tipo (licencia):</label><input id="lic_tipo" type="text" name="lic_tipo" /></div>
-        <div class="row"><label for="lic_venc">Venc. licencia:</label><input id="lic_venc" type="date" name="lic_venc" /></div>
-        <div class="row"><label>Posee Vehículo:</label>
-          <div class="radio-group" role="radiogroup" aria-label="Posee Vehículo">
-            <label for="veh_si"><input id="veh_si" type="radio" name="vehiculo" value="si"> Sí</label>
-            <label for="veh_no"><input id="veh_no" type="radio" name="vehiculo" value="no"> No</label>
-          </div>
-        </div>
-      </div>
-
-      <div class="bar" style="margin-top:14px" id="dependientes">Personas que dependen de usted</div>
-      <table class="table" aria-labelledby="dependientes">
-        <caption class="sr-only">Listado de personas dependientes</caption>
-        <thead>
-          <tr>
-            <th scope="col">Nombre</th>
-            <th scope="col">Edad</th>
-            <th scope="col">Parentesco</th>
-            <th scope="col" style="width:340px">Vive con</th>
-          </tr>
-        </thead>
-        <tbody id="dependientes-body">
-          <tr>
-            <td><input type="text" name="dep_nombre[]" aria-label="Nombre dependiente 1"></td>
-            <td><input type="number" name="dep_edad[]" min="0" aria-label="Edad dependiente 1"></td>
-            <td><input type="text" name="dep_parentesco[]" aria-label="Parentesco dependiente 1"></td>
-            <td>
-              <div class="radio-group" role="radiogroup" aria-label="Vive con dependiente 1">
-                <label><input type="radio" name="vive_con_0" value="padres"> Sus Padres</label>
-                <label><input type="radio" name="vive_con_0" value="parientes"> Parientes</label>
-                <label><input type="radio" name="vive_con_0" value="familia"> Su Familia</label>
-                <label><input type="radio" name="vive_con_0" value="solo"> Solo</label>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="actions">
-        <button class="ghost" type="button" onclick="agregarFila()">Añadir dependiente</button>
-        <span class="muted"></span>
-      </div>
-
-      <div class="row">
-        <label>Si es Extranjero: ¿Posee permiso para laborar en territorio panameño?</label>
-        <div class="radio-group" role="radiogroup" aria-label="Permiso para laborar">
-          <label for="permiso_si"><input id="permiso_si" type="radio" name="permiso" value="si"> Sí</label>
-          <label for="permiso_no"><input id="permiso_no" type="radio" name="permiso" value="no"> No</label>
-        </div>
-      </div>
-    </section>
-
-    <div class="bar" id="salud">Estado de Salud</div>
-    <section aria-labelledby="salud">
-      <div class="grid cols-4">
-        <div class="row"><label>Padece Enfermedad Crónica:</label><div class="radio-group" role="radiogroup" aria-label="Enfermedad Crónica"><label><input type="radio" name="cronica" value="no"> No</label><label><input type="radio" name="cronica" value="si"> Sí</label></div></div>
-        <div class="row"><label for="otro_salud">Otro (Explique):</label><input id="otro_salud" type="text" name="otro_salud" /></div>
-        <div class="row"><label for="usa_lentes">Usa Lentes:</label><input id="usa_lentes" type="text" name="usa_lentes" placeholder="Sí/No" /></div>
-        <div class="row"><label for="fuma">Fuma:</label><input id="fuma" type="text" name="fuma" placeholder="Sí/No" /></div>
-      </div>
-      <div class="grid cols-4">
-        <div class="row"><label for="toma">Toma (alcohol/medicación):</label><input id="toma" type="text" name="toma" /></div>
-      </div>
-    </section>
-
-    <div class="bar" id="familiares">Datos Familiares</div>
-    <section aria-labelledby="familiares">
-      <table class="table">
-        <caption class="sr-only">Datos de familiares cercanos</caption>
-        <thead>
-          <tr>
-            <th scope="col" style="width:18%">Nombre</th>
-            <th scope="col" style="width:14%">La persona vive (Sí/No)</th>
-            <th scope="col" style="width:10%">Edad</th>
-            <th scope="col">Dirección</th>
-            <th scope="col" style="width:18%">Ocupación</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th scope="row">Padre:</th>
-            <td><input type="text" name="padre_vive" placeholder="Sí/No" aria-label="Padre vive (Sí/No)"></td>
-            <td><input type="number" name="padre_edad" min="0" aria-label="Edad del padre"></td>
-            <td><input type="text" name="padre_dir" aria-label="Dirección del padre"></td>
-            <td><input type="text" name="padre_ocup" aria-label="Ocupación del padre"></td>
-          </tr>
-          <tr>
-            <th scope="row">Madre:</th>
-            <td><input type="text" name="madre_vive" placeholder="Sí/No" aria-label="Madre vive (Sí/No)"></td>
-            <td><input type="number" name="madre_edad" min="0" aria-label="Edad de la madre"></td>
-            <td><input type="text" name="madre_dir" aria-label="Dirección de la madre"></td>
-            <td><input type="text" name="madre_ocup" aria-label="Ocupación de la madre"></td>
-          </tr>
-          <tr>
-            <th scope="row">Esposa(o):</th>
-            <td><input type="text" name="esposo_vive" placeholder="Sí/No" aria-label="Esposo(a) vive (Sí/No)"></td>
-            <td><input type="number" name="esposo_edad" min="0" aria-label="Edad de esposo(a)"></td>
-            <td><input type="text" name="esposo_dir" aria-label="Dirección de esposo(a)"></td>
-            <td><input type="text" name="esposo_ocup" aria-label="Ocupación de esposo(a)"></td>
-          </tr>
-          <tr>
-            <th scope="row">Hijo(s):</th>
-            <td><input type="text" name="hijos_vive" placeholder="Sí/No" aria-label="Hijo(s) vive (Sí/No)"></td>
-            <td><input type="number" name="hijos_edad" min="0" aria-label="Edad de hijo(s)"></td>
-            <td><input type="text" name="hijos_dir" aria-label="Dirección de hijo(s)"></td>
-            <td><input type="text" name="hijos_ocup" aria-label="Ocupación de hijo(s)"></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="grid cols-2" style="margin-top:10px">
-        <div class="row"><label for="emerg_contacto">En caso de emergencia contactar a:</label><input id="emerg_contacto" type="text" name="emerg_contacto"></div>
-        <div class="row"><label for="emerg_telefono">Teléfono:</label><input id="emerg_telefono" type="tel" name="emerg_telefono" autocomplete="tel"></div>
-      </div>
-    </section>
-
-    <hr class="page-break" />
-
-    <!-- ========================= PÁGINA 2: ESCOLARIDAD / EMPLEOS / REFERENCIAS ========================= -->
-    <div class="bar" id="escolaridad">Escolaridad</div>
-    <section aria-labelledby="escolaridad">
-      <table class="table">
-        <caption class="sr-only">Información de estudios realizados</caption>
-        <thead>
-          <tr><th scope="col">Nombre de la Escuela</th><th scope="col">Dirección</th><th scope="col">Fechas Desde</th><th scope="col">Fechas Hasta</th><th scope="col">Título Obtenido</th></tr>
-        </thead>
-        <tbody>
-          <tr><th scope="row">Primaria:</th><td><input type="text" aria-label="Dirección primaria"></td><td><input type="date" aria-label="Desde primaria"></td><td><input type="date" aria-label="Hasta primaria"></td><td><input type="text" aria-label="Título primaria"></td></tr>
-          <tr><th scope="row">Secundaria:</th><td><input type="text" aria-label="Dirección secundaria"></td><td><input type="date" aria-label="Desde secundaria"></td><td><input type="date" aria-label="Hasta secundaria"></td><td><input type="text" aria-label="Título secundaria"></td></tr>
-          <tr><th scope="row">Universidad:</th><td><input type="text" aria-label="Dirección universidad"></td><td><input type="date" aria-label="Desde universidad"></td><td><input type="date" aria-label="Hasta universidad"></td><td><input type="text" aria-label="Título universidad"></td></tr>
-          <tr><th scope="row">Otro:</th><td><input type="text" aria-label="Dirección otro"></td><td><input type="date" aria-label="Desde otro"></td><td><input type="date" aria-label="Hasta otro"></td><td><input type="text" aria-label="Título otro"></td></tr>
-        </tbody>
-      </table>
-      <div class="row"><label>¿Está usted actualmente estudiando?</label><div class="radio-group" role="radiogroup" aria-label="Actualmente estudiando"><label><input type="radio" name="estudia" value="si"> Sí</label><label><input type="radio" name="estudia" value="no"> No</label></div></div>
-      <div class="grid cols-4"><div class="row"><label for="centro_edu">Centro Educativo:</label><input id="centro_edu" type="text"></div><div class="row"><label for="horario_estudio">Horario:</label><input id="horario_estudio" type="text"></div><div class="row"><label for="curso_carrera">Curso o Carrera:</label><input id="curso_carrera" type="text"></div><div class="row"><label for="grado">Grado:</label><input id="grado" type="text"></div></div>
-    </section>
-
-    <div class="bar" id="empleos">Empleo Actual y Anteriores</div>
-    <section aria-labelledby="empleos">
-      <table class="table">
-        <caption class="sr-only">Historial de empleos</caption>
-        <thead>
-          <tr><th scope="col">Concepto</th><th scope="col">Empleo Actual o Último</th><th scope="col">Empleo Anterior</th><th scope="col">Empleo Anterior</th></tr>
-        </thead>
-        <tbody>
-          <tr><th scope="row">Nombre de la Compañía</th><td><input type="text" aria-label="Compañía empleo actual"></td><td><input type="text" aria-label="Compañía empleo anterior 1"></td><td><input type="text" aria-label="Compañía empleo anterior 2"></td></tr>
-          <tr><th scope="row">Tiempo que prestó sus servicios</th><td><input type="text" aria-label="Tiempo empleo actual"></td><td><input type="text" aria-label="Tiempo empleo anterior 1"></td><td><input type="text" aria-label="Tiempo empleo anterior 2"></td></tr>
-          <tr><th scope="row">Dirección de la compañía</th><td><input type="text" aria-label="Dirección empleo actual"></td><td><input type="text" aria-label="Dirección empleo anterior 1"></td><td><input type="text" aria-label="Dirección empleo anterior 2"></td></tr>
-          <tr><th scope="row">Teléfono de la compañía</th><td><input type="text" aria-label="Teléfono empleo actual"></td><td><input type="text" aria-label="Teléfono empleo anterior 1"></td><td><input type="text" aria-label="Teléfono empleo anterior 2"></td></tr>
-          <tr><th scope="row">Puesto que desempeñó</th><td><input type="text" aria-label="Puesto empleo actual"></td><td><input type="text" aria-label="Puesto empleo anterior 1"></td><td><input type="text" aria-label="Puesto empleo anterior 2"></td></tr>
-          <tr><th scope="row">Salario</th><td><input type="text" placeholder="Inicial" aria-label="Salario inicial empleo actual"> <input type="text" placeholder="Final" aria-label="Salario final empleo actual"></td><td><input type="text" placeholder="Inicial" aria-label="Salario inicial empleo anterior 1"> <input type="text" placeholder="Final" aria-label="Salario final empleo anterior 1"></td><td><input type="text" placeholder="Inicial" aria-label="Salario inicial empleo anterior 2"> <input type="text" placeholder="Final" aria-label="Salario final empleo anterior 2"></td></tr>
-          <tr><th scope="row">Motivo de salida</th><td><input type="text" aria-label="Motivo de salida empleo actual"></td><td><input type="text" aria-label="Motivo de salida empleo anterior 1"></td><td><input type="text" aria-label="Motivo de salida empleo anterior 2"></td></tr>
-          <tr><th scope="row">Nombre del Jefe Inmediato</th><td><input type="text" aria-label="Jefe inmediato empleo actual"></td><td><input type="text" aria-label="Jefe inmediato empleo anterior 1"></td><td><input type="text" aria-label="Jefe inmediato empleo anterior 2"></td></tr>
-          <tr><th scope="row">Puesto del Jefe Inmediato</th><td><input type="text" aria-label="Puesto jefe inmediato empleo actual"></td><td><input type="text" aria-label="Puesto jefe inmediato empleo anterior 1"></td><td><input type="text" aria-label="Puesto jefe inmediato empleo anterior 2"></td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <div class="bar" id="referencias">Referencias (No Familiares)</div>
-    <section aria-labelledby="referencias">
-      <table class="table">
-        <caption class="sr-only">Referencias personales no familiares</caption>
-        <thead>
-          <tr><th scope="col">Nombre</th><th scope="col">Parentesco</th><th scope="col">Dirección</th><th scope="col">Teléfono</th><th scope="col">Ocupación</th><th scope="col">Tiempo de Conocerlo</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><input type="text" aria-label="Nombre referencia 1"></td><td><input type="text" aria-label="Parentesco referencia 1"></td><td><input type="text" aria-label="Dirección referencia 1"></td><td><input type="text" aria-label="Teléfono referencia 1"></td><td><input type="text" aria-label="Ocupación referencia 1"></td><td><input type="text" aria-label="Tiempo de conocerlo referencia 1"></td></tr>
-          <tr><td><input type="text" aria-label="Nombre referencia 2"></td><td><input type="text" aria-label="Parentesco referencia 2"></td><td><input type="text" aria-label="Dirección referencia 2"></td><td><input type="text" aria-label="Teléfono referencia 2"></td><td><input type="text" aria-label="Ocupación referencia 2"></td><td><input type="text" aria-label="Tiempo de conocerlo referencia 2"></td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <div class="bar" id="datos-generales">Datos Generales</div>
-    <section aria-labelledby="datos-generales">
-      <div class="grid cols-2">
-        <div class="row"><label for="como_enterado">Cómo se enteró del empleo:</label><input id="como_enterado" type="text"></div>
-        <div class="row"><label>Tiene familiares o conocidos en esta empresa:</label><div class="radio-group" role="radiogroup" aria-label="Familiares en la empresa"><label><input type="radio" name="familiares" value="si"> Sí</label><label><input type="radio" name="familiares" value="no"> No</label></div></div>
-      </div>
-      <div class="grid cols-2">
-        <div class="row"><label for="nombre_familiar">Nombre:</label><input id="nombre_familiar" type="text"></div>
-        <div class="row"><label for="parentesco_familiar">Parentesco:</label><input id="parentesco_familiar" type="text"></div>
-      </div>
-      <div class="grid cols-2">
-        <div class="row"><label>¿Ha trabajado anteriormente en Serviestiba o PPC?</label><div class="radio-group" role="radiogroup" aria-label="Trabajo previo en Serviestiba o PPC"><label><input type="radio" name="trabajo_prev" value="si"> Sí</label><label><input type="radio" name="trabajo_prev" value="no"> No</label></div></div>
-        <div class="row"><label for="motivo_salida_prev">Motivo de salida:</label><input id="motivo_salida_prev" type="text"></div>
-      </div>
-      <div class="grid cols-2">
-        <div class="row"><label>¿Pertenece a algún sindicato?</label><div class="radio-group" role="radiogroup" aria-label="Pertenece a sindicato"><label><input type="radio" name="sindicato" value="si"> Sí</label><label><input type="radio" name="sindicato" value="no"> No</label></div></div>
-        <div class="row"><label for="cual_sindicato">¿Cuál?</label><input id="cual_sindicato" type="text"></div>
-      </div>
-    </section>
-
-    <hr class="page-break" />
-
-    <!-- ========================= PÁGINA 3: DISPONIBILIDAD / DECLARACIÓN / RRHH ========================= -->
-    <div class="hr-header">
-      <div class="logo-box">SERVI · ESTIBA, S.A.</div>
-      <div class="doc-title">SOLICITUD DE EMPLEO</div>
     </div>
 
-    <section aria-label="Disponibilidad y Declaración">
-      <table class="table">
-        <tbody>
-          <tr>
-            <td style="width:240px"><strong>Disponibilidad para viajar</strong></td>
-            <td style="width:220px">
-              <div class="radio-group tight" role="radiogroup" aria-label="Disponibilidad para viajar">
-                <label><input type="radio" name="viajar" value="si"> Sí</label>
-                <label><input type="radio" name="viajar" value="no"> No</label>
-              </div>
-            </td>
-            <td><strong>Por qué:</strong></td>
-            <td><input type="text" name="viajar_razon" aria-label="Razón para disponibilidad de viaje"></td>
-          </tr>
-          <tr>
-            <td><strong>Firma:</strong></td>
-            <td colspan="3"><input type="text" name="firma" style="height:48px" aria-label="Firma"></td>
-          </tr>
-        </tbody>
-      </table>
+    <script>
+        // Set today's date if not already set
+        (function setToday() {
+            var fecha = document.getElementById('fecha_hoy');
+            if (fecha && !fecha.value) {
+                var today = new Date();
+                var y = today.getFullYear();
+                var m = String(today.getMonth() + 1).padStart(2, '0');
+                var d = String(today.getDate()).padStart(2, '0');
+                fecha.value = `${y}-${m}-${d}`;
+            }
+        })();
 
-      <div class="note" role="note" aria-label="Declaración del solicitante">
-        <strong>Declaración del solicitante:</strong>
-        Certifico que toda la información que he previsto en esta solicitud de empleo es verdadera, completa y correcta.
-        Autorizo a la empresa para que verifique mis referencias laborales y personales, así como la veracidad de mis títulos,
-        acreditaciones y licencias. Entiendo y acepto que la empresa se reserva de tomar acciones disciplinarias que estime
-        convenientes en caso de que encuentre información dada de forma incompleta, incorrecta o injustificada.
-      </div>
-
-      <div style="margin-top:12px">
-        <strong>Documentos que debe incluir el solicitante:</strong>
-        <ul class="doc-list">
-          <li>Copia de Cédula</li>
-          <li>Copia de la Licencia</li>
-          <li>Copia de Diplomas</li>
-          <li>Record policivo</li>
-          <li>Cartas de referencias</li>
-          <li>Número de Cuenta de Banco General (Si Posee): <input type="text" name="cta_bgeneral" style="max-width:360px" aria-label="Número de Cuenta de Banco General"></li>
-          <li>Otros: <input type="text" name="otros_docs" style="max-width:360px" aria-label="Otros documentos"></li>
-        </ul>
-      </div>
-    </section>
-
-    <div class="bar">Para uso exclusivo de Recursos Humanos</div>
-    <section aria-label="Para uso exclusivo de Recursos Humanos">
-      <table class="table">
-        <tbody>
-          <tr>
-            <td style="width:170px">Posición a la que aplica:</td>
-            <td><input type="text" name="posicion_aplica" aria-label="Posición a la que aplica"></td>
-            <td style="width:150px">Salario asignado:</td>
-            <td><input type="text" name="salario_asignado" aria-label="Salario asignado"></td>
-            <td style="width:120px">Disponibilidad:</td>
-            <td><input type="text" name="disponibilidad" aria-label="Disponibilidad"></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <table class="table" aria-label="Evaluación de RRHH">
-        <tbody>
-          <tr>
-            <td style="width:45%">
-              <div><strong>ACTITUD DEL ENTREVISTADO</strong></div>
-              <div class="radio-group tight" style="margin-top:6px" role="radiogroup" aria-label="Actitud del entrevistado">
-                <label>Buena <input type="radio" name="actitud" value="buena"></label>
-                <label>Regular <input type="radio" name="actitud" value="regular"></label>
-                <label>Mala <input type="radio" name="actitud" value="mala"></label>
-              </div>
-            </td>
-            <td>
-              <div><strong>OBSERVACIONES</strong></div>
-              <textarea name="obs_actitud" style="min-height:56px" aria-label="Observaciones sobre actitud"></textarea>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div><strong>DOMINIO DE FUNCIONES Y CONOCIMIENTOS</strong></div>
-              <div class="radio-group tight" style="margin-top:6px" role="radiogroup" aria-label="Dominio de funciones y conocimientos">
-                <label>Buena <input type="radio" name="dominio" value="buena"></label>
-                <label>Regular <input type="radio" name="dominio" value="regular"></label>
-                <label>Mala <input type="radio" name="dominio" value="mala"></label>
-              </div>
-            </td>
-            <td>
-              <div><strong>OBSERVACIONES</strong></div>
-              <textarea name="obs_dominio" style="min-height:56px" aria-label="Observaciones sobre dominio"></textarea>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div><strong>TOMA DE DECISIONES</strong></div>
-              <div class="radio-group tight" style="margin-top:6px" role="radiogroup" aria-label="Toma de decisiones">
-                <label>Buena <input type="radio" name="decisiones" value="buena"></label>
-                <label>Regular <input type="radio" name="decisiones" value="regular"></label>
-                <label>Mala <input type="radio" name="decisiones" value="mala"></label>
-              </div>
-            </td>
-            <td>
-              <div><strong>OBSERVACIONES</strong></div>
-              <textarea name="obs_decisiones" style="min-height:56px" aria-label="Observaciones sobre decisiones"></textarea>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div><strong>INFLUENCIA DE LIDERAZGO</strong></div>
-              <div class="radio-group tight" style="margin-top:6px" role="radiogroup" aria-label="Influencia de liderazgo">
-                <label>Buena <input type="radio" name="liderazgo" value="buena"></label>
-                <label>Regular <input type="radio" name="liderazgo" value="regular"></label>
-                <label>Mala <input type="radio" name="liderazgo" value="mala"></label>
-              </div>
-            </td>
-            <td>
-              <div><strong>OBSERVACIONES</strong></div>
-              <textarea name="obs_liderazgo" style="min-height:56px" aria-label="Observaciones sobre liderazgo"></textarea>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <div class="actions">
-      <button class="ghost" type="reset">Limpiar</button>
-      <div style="flex:1"></div>
-      <button class="primary" type="button" onclick="window.print()">Imprimir</button>
-    </div>
-  </form>
-
-  <script>
-    // Establece la fecha de hoy si no hay valor
-    (function setToday() {
-      var fecha = document.getElementById('fecha_hoy');
-      if (fecha && !fecha.value) {
-        var today = new Date();
-        var m = String(today.getMonth() + 1).padStart(2, '0');
-        var d = String(today.getDate()).padStart(2, '0');
-        var y = today.getFullYear();
-        fecha.value = y + '-' + m + '-' + d;
-      }
-    })();
-
-    function agregarFila() {
-      const body = document.getElementById('dependientes-body');
-      const idx = body.rows.length;
-      const tr = document.createElement('tr');
-      tr.innerHTML = '\
-        <td><input type="text" name="dep_nombre[]" aria-label="Nombre dependiente ' + (idx + 1) + '"></td>\
-        <td><input type="number" name="dep_edad[]" min="0" aria-label="Edad dependiente ' + (idx + 1) + '"></td>\
-        <td><input type="text" name="dep_parentesco[]" aria-label="Parentesco dependiente ' + (idx + 1) + '"></td>\
-        <td>\
-          <div class="radio-group" role="radiogroup" aria-label="Vive con dependiente ' + (idx + 1) + '">\
-            <label><input type="radio" name="vive_con_' + idx + '" value="padres"> Sus Padres</label>\
-            <label><input type="radio" name="vive_con_' + idx + '" value="parientes"> Parientes</label>\
-            <label><input type="radio" name="vive_con_' + idx + '" value="familia"> Su Familia</label>\
-            <label><input type="radio" name="vive_con_' + idx + '" value="solo"> Solo</label>\
-          </div>\
-        </td>';
-      body.appendChild(tr);
-    }
-  </script>
+        // Handle dynamic rows
+        function agregarFila(tableId) {
+            const tbody = document.getElementById(tableId);
+            const idx = tbody.rows.length;
+            const tr = document.createElement('tr');
+            
+            tr.innerHTML = `
+                <td><input type="text" name="dep_nombre[]" aria-label="Nombre del dependiente"></td>
+                <td><input type="number" name="dep_edad[]" min="0" aria-label="Edad del dependiente"></td>
+                <td><input type="text" name="dep_parentesco[]" aria-label="Parentesco del dependiente"></td>
+                <td>
+                    <div class="radio-group" role="radiogroup" aria-label="Vive con el dependiente">
+                        <label><input type="radio" name="vive_con_${idx}" value="padres"> Sus Padres</label>
+                        <label><input type="radio" name="vive_con_${idx}" value="familia"> Su Familia</label>
+                        <label><input type="radio" name="vive_con_${idx}" value="parientes"> Parientes</label>
+                        <label><input type="radio" name="vive_con_${idx}" value="solo"> Solo</label>
+                    </div>
+                </td>
+            `;
+            
+            tbody.appendChild(tr);
+        }
+        
+        function eliminarFila(tableId) {
+            const tbody = document.getElementById(tableId);
+            if (tbody.rows.length > 1) {
+                tbody.deleteRow(tbody.rows.length - 1);
+            }
+        }
+    </script>
 </body>
 </html>
