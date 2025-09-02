@@ -1,988 +1,1016 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Solicitud de Empleo – Serviestiba, S.A.</title>
-    <style>
-        /* Variables y base */
-        :root {
-            --primary: #2e79c6;
-            --border: #bfc8d4;
-            --bg: #f6f8fb;
-            --ink: #1e293b;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Gestión de Reclamos</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .table-container { max-height: 600px; overflow-y: auto; }
+    .modal { display: none; }
+    .modal-active { display: flex; }
+    #otroContainer { display: none; }
+    .hidden { display: none !important; }
+    .badge { border-radius: 9999px; padding: 2px 10px; font-size: 12px; }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+  <script type="module">
+    
+    /* ------------------------ IMPORTS FIREBASE (CDN) ------------------------ */
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore, collection, query, onSnapshot, addDoc, serverTimestamp,
+      doc, updateDoc, arrayUnion, getDocs, setDoc
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    /* ----------------------- CONFIGURACIÓN DE FIREBASE ---------------------- */
+const firebaseConfig = {
+  // Estos valores deben ser los que te dio la consola de Firebase
+  apiKey: "AIzaSyB42ikm2V5voMcLlnv4xVRSOdYaEnivHaw",
+  authDomain: "reclamosdeserviestiba.firebaseapp.com",
+  projectId: "reclamosdeserviestiba",
+  storageBucket: "reclamosdeserviestiba.firebasestorage.app",
+  messagingSenderId: "594034665663",
+  appId: "1:594034665663:web:eac0eb961405dfce70be0a"
+};
+    /* --------------------------- INICIALIZACIONES --------------------------- */
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const appId = firebaseConfig.appId;
+
+    // Configuración de EmailJS
+    const EMAILJS_PUBLIC_KEY = "_t-n5RHgJXdbmjSmL";
+    const EMAILJS_SERVICE_ID = "service_mh7ecio";
+    const EMAILJS_TEMPLATE_ID_FORM = "template_6fmh15n"; // <-- Plantilla para el formulario inicial
+    const EMAILJS_TEMPLATE_ID_HR = "template_ykhmz8d"; // <-- Plantilla para la respuesta de RRHH
+
+    if (EMAILJS_PUBLIC_KEY) {
+      // eslint-disable-next-line no-undef
+      emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+    }
+
+    // Mapeo de usuarios a departamentos (quién ve el panel)
+    const departmentUsers = {
+      'alfonsochu@serviestibasa.com': 'GERENCIA',
+      'davidhsu@serviestibasa.com': 'COMPRAS',
+      'computo@serviestibasa.com': 'propietario',
+      'rsalazar@serviestibasa.com': 'PLANILLA',
+      'satencio@serviestibasa.com': 'MULTISERVICIOS',
+     };
+
+    // Estado global para vincular Reclamo seleccionado con el Panel RRHH
+    let allClaimsData = [];
+    let dashboardInitialized = false;
+    let currentClaimId = null;
+    let currentClaimInfo = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      /* ----------------------- Referencias a elementos ---------------------- */
+      const formSection = document.getElementById('form-section');
+      const loginSection = document.getElementById('login-section');
+      const dashboardSection = document.getElementById('dashboard-section');
+
+      const loginForm = document.getElementById('login-form');
+      const loginMessage = document.getElementById('login-message');
+      const logoutBtn = document.getElementById('logout-btn');
+      const goToDashboardBtn = document.getElementById('go-to-dashboard');
+      const goBackToFormBtn = document.getElementById('go-back-to-form');
+
+      const chapaInput = document.getElementById('chapa');
+      const empresaSelect = document.getElementById('empresa');
+      const chapaError = document.getElementById('chapa-error');
+      const fechaHoraSpan = document.getElementById('fecha-hora-reclamo');
+
+      const claimForm = document.getElementById('claim-form');
+      const otroContainer = document.getElementById('otroContainer');
+      const tipoReclamoCheckboxes = document.querySelectorAll('input[name="tipoReclamo"]');
+      const successMessage = document.getElementById('success-message');
+      const errorMessage = document.getElementById('error-message');
+      const loadingSpinner = document.getElementById('loading-spinner');
+      const claimIdMessage = document.getElementById('claim-id-message'); // Nuevo elemento para mostrar el ID
+
+      const departmentTitle = document.getElementById('department-title');
+
+      // Dashboard
+      const claimsTableBodyPendientes = document.getElementById('claims-table-body-pendientes');
+      const claimsTableBodyAtendidos = document.getElementById('claims-table-body-atendidos');
+      const exportExcelBtn = document.getElementById('export-excel');
+      const exportPdfBtn = document.getElementById('export-pdf');
+      const exportWordBtn = document.getElementById('export-word');
+      const dashboardContent = document.getElementById('dashboard-content');
+
+      const modal = document.getElementById('modal');
+      const modalContent = document.getElementById('modal-content');
+      const closeModalBtn = document.getElementById('close-modal');
+
+      /* -------------------------- Utilidades UI ----------------------------- */
+      const showSection = (sectionToShow) => {
+        formSection.classList.add('hidden');
+        loginSection.classList.add('hidden');
+        dashboardSection.classList.add('hidden');
+        sectionToShow.classList.remove('hidden');
+      };
+
+      const updateDateTime = () => {
+        const now = new Date();
+        const formattedDate = now.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const formattedTime = now.toLocaleTimeString('es-ES');
+        fechaHoraSpan.textContent = `${formattedDate} - ${formattedTime}`;
+      };
+      updateDateTime();
+      setInterval(updateDateTime, 1000);
+
+      // Validación de chapa (6 dígitos o "ADM")
+      chapaInput.addEventListener('input', () => {
+        const value = chapaInput.value.trim();
+        const isValid = /^\d{6}$/.test(value) || value.toUpperCase() === 'ADM';
+        chapaError.textContent = (!isValid && value !== '') ? 'Debe ser 6 números o "ADM".' : '';
+      });
+
+      // "Otro" dinámico
+      tipoReclamoCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+          const otroCheckbox = document.getElementById('otro');
+          otroContainer.style.display = (otroCheckbox && otroCheckbox.checked) ? 'block' : 'none';
+        });
+      });
+
+      // Navegación
+      goToDashboardBtn.addEventListener('click', () => showSection(loginSection));
+      goBackToFormBtn?.addEventListener('click', () => showSection(formSection));
+
+      /* ------------------------------ Envío --------------------------------- */
+      claimForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        successMessage?.classList.add('hidden');
+        errorMessage?.classList.add('hidden');
+        claimIdMessage?.classList.add('hidden'); // Ocultar el mensaje del ID
+        if (errorMessage) errorMessage.textContent = '';
+        loadingSpinner?.classList.remove('hidden');
+
+        // Validar Chapa y Empresa
+        const chapaValue = chapaInput.value.trim();
+        const isChapaValid = /^\d{6}$/.test(chapaValue) || chapaValue.toUpperCase() === 'ADM';
+        if (!isChapaValid) {
+          chapaError.textContent = 'Formato de Chapa incorrecto.';
+          loadingSpinner?.classList.add('hidden');
+          return;
+        }
+        if (!empresaSelect.value) {
+          loadingSpinner?.classList.add('hidden');
+          alert('Por favor seleccione una Empresa.');
+          return;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        const formData = new FormData(claimForm);
 
-        body {
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-            margin: 0;
-            background: var(--bg);
-            color: var(--ink);
-            font-size: 16px;
-        }
-
-        /* Contenedor principal del formulario */
-        .page {
-            max-width: 1100px;
-            margin: 1.5rem auto;
-            background: #fff;
-            border: 1px solid var(--border);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, .05);
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-        }
-
-        /* Encabezado */
-        header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            margin-bottom: 0.75rem;
-        }
-
-        header h1 {
-            font-size: 1.125rem;
-            font-weight: 700;
-            margin: 0;
-        }
-
-        .today {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        /* Secciones y títulos */
-        fieldset {
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            margin: 1.5rem 0;
-            padding: 1.25rem;
-        }
-
-        legend {
-            background: var(--primary);
-            color: #fff;
-            padding: 0.625rem 0.875rem;
-            font-weight: 700;
-            border-radius: 0.625rem;
-            display: inline-block;
-            text-transform: uppercase;
-            letter-spacing: .3px;
-        }
-
-        /* Layout de columnas */
-        .grid {
-            display: grid;
-            gap: 0.75rem;
-            margin-top: 0.75rem;
-        }
+        const data = {
+          nombre: formData.get('nombre') || '',
+          apellidoPaterno: formData.get('apellidoPaterno') || '',
+          apellidoMaterno: formData.get('apellidoMaterno') || '',
+          cedula: formData.get('cedula') || '',
+          chapa: formData.get('chapa') || '',
+          empresa: formData.get('empresa') || '',
+          cargo: formData.get('cargo') || '',
+          posicion: formData.get('posicion') || '',
+          grupo: formData.get('grupo') || '',
+          celular: formData.get('celular') || '',
+          email: formData.get('email') || '',
+          tipoReclamo: formData.getAll('tipoReclamo'),
+          otroDescripcion: formData.get('otroDescripcion') || '',
+          detalle: formData.get('detalle') || '',
+          fechaEnvio: serverTimestamp(),
+          estado: 'Pendiente',
+          historialRespuestas: [],
+          rrhhData: {}
+        };
         
-        .grid.cols-2 {
-            grid-template-columns: 1fr 1fr;
-        }
-        
-        .grid.cols-3 {
-            grid-template-columns: repeat(3, 1fr);
-        }
+        const collectionRef = collection(db, 'claimForms');
+        const q = query(collectionRef);
+        const querySnapshot = await getDocs(q);
+        const serialNumber = querySnapshot.size + 1;
 
-        .grid.cols-4 {
-            grid-template-columns: repeat(4, 1fr);
-        }
+        data.serial = serialNumber;
+        data.id = `REC-${serialNumber}`;
 
-        .row {
-            display: grid;
-            grid-template-columns: 180px 1fr;
-            align-items: center;
-            gap: 0.625rem;
-        }
-        
-        .row-alt {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
+        const claimRef = doc(db, 'claimForms', data.id);
 
-        /* Estilos de los inputs */
-        label {
-            font-size: 0.75rem;
-            color: #334155;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            padding: 0.5rem 0.625rem;
-            background: #fff;
-            font-size: 0.875rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(46, 121, 198, 0.2);
-        }
-
-        textarea {
-            min-height: 4rem;
-        }
-        
-        .input-inline {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .input-inline input {
-            width: auto;
-            flex: 1;
-        }
-
-        /* Estilos de tabla */
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 0.375rem;
-        }
-
-        .table th, .table td {
-            border: 1px solid var(--border);
-            padding: 0.5rem;
-            font-size: 0.8125rem;
-            vertical-align: top;
-        }
-
-        .table th {
-            background: #eef4fb;
-            text-align: left;
-        }
-        
-        .table input {
-            border: none;
-            padding: 0;
-        }
-
-        /* Controles de radio/checkbox */
-        .radio-group {
-            display: flex;
-            gap: 1.125rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .radio-group label {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            font-size: 0.875rem;
-            color: var(--ink);
-            cursor: pointer;
-        }
-        
-        /* Botones y acciones */
-        .actions {
-            display: flex;
-            gap: 0.625rem;
-            justify-content: flex-end;
-            margin-top: 1.5rem;
-        }
-
-        button {
-            border: none;
-            padding: 0.625rem 1rem;
-            border-radius: 0.625rem;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.875rem;
-            transition: background-color 0.2s, color 0.2s;
-        }
-
-        .primary {
-            background: var(--primary);
-            color: #fff;
-        }
-        
-        .primary:hover {
-            background: #2361a8;
-        }
-
-        .ghost {
-            background: #edf2f7;
-            color: #334155;
-        }
-        
-        .ghost:hover {
-            background: #e2e8f0;
-        }
-
-        .muted {
-            background: transparent;
-            color: #475569;
-        }
-
-        /* Declaración */
-        .note {
-            border: 2px solid var(--primary);
-            border-radius: 0.75rem;
-            padding: 0.75rem;
-            background: #f0f6ff;
-            margin-top: 1rem;
-            font-size: 0.875rem;
-        }
-
-        .doc-list {
-            margin: 0.5rem 0 0.875rem 1.25rem;
-            font-size: 0.875rem;
-        }
-
-        .doc-list li {
-            margin: 0.25rem 0;
-        }
-
-        /* Estilo para RRHH */
-        .hr-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 1.5rem;
-        }
-
-        .logo-box {
-            height: 3rem;
-            border-radius: 0.5rem;
-            background: linear-gradient(180deg, #e6eef8, #d9e7fb);
-            border: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            color: #3b5b8a;
-            padding: 0 1rem;
-        }
-        
-        .doc-title {
-            font-weight: 800;
-            font-size: 1rem;
-            letter-spacing: 0.3px;
-        }
-        
-        .form-send-message {
-            margin-top: 1rem;
-            padding: 1rem;
-            background-color: #d1fae5;
-            color: #065f46;
-            border: 1px solid #34d399;
-            border-radius: 0.5rem;
-            display: none;
-        }
-        
-        .doc-upload-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        
-        .doc-upload-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        
-        /* Estilo para el input de tipo file */
-        input[type="file"] {
-            border: 1px dashed var(--border);
-            background: #fff;
-            padding: 1rem;
-            cursor: pointer;
-            text-align: center;
-            color: #64748b;
-        }
-
-        input[type="file"]::file-selector-button {
-            display: none;
-        }
-
-        /* Accesibilidad sin afectar diseño */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 1px, 1px);
-            white-space: nowrap;
-            border: 0;
-        }
-        
-        /* Media queries para responsividad */
-        @media (max-width: 768px) {
-            .page {
-                padding: 1rem;
-                margin: 1rem;
+        try {
+          await setDoc(claimRef, data);
+          
+          // Enviar correo de confirmación al usuario
+          if (EMAILJS_PUBLIC_KEY && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID_FORM) {
+            try {
+              // eslint-disable-next-line no-undef
+              await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID_FORM, {
+                to_email: data.email,
+                to_name: `${data.nombre || ''} ${data.apellidoPaterno || ''}`.trim(),
+                claim_id: data.id,
+                claim_message: `Su reclamo ha sido recibido con el n\u00FAmero de referencia ${data.id}. Ser\u00e1 evaluado y le informaremos del resultado. Por favor, guarde este n\u00FAmero para futuras consultas.`
+              });
+              console.log('Correo de confirmación enviado.');
+            } catch (err) {
+              console.error('Error enviando EmailJS:', err);
             }
-            .grid.cols-2, .grid.cols-3, .grid.cols-4, .doc-upload-grid {
-                grid-template-columns: 1fr;
+          }
+
+          claimForm.reset();
+          otroContainer.style.display = 'none';
+          successMessage?.classList.remove('hidden');
+          claimIdMessage.textContent = `Su reclamo ha sido enviado. El n\u00famero de referencia es: ${data.id}`;
+          claimIdMessage?.classList.remove('hidden');
+        } catch (error) {
+          console.error("Error writing document: ", error);
+          if (errorMessage) {
+            errorMessage.textContent = `Hubo un error al enviar el reclamo. ${error?.code || ''} ${error?.message || ''}`;
+            errorMessage.classList.remove('hidden');
+          }
+        } finally {
+          loadingSpinner?.classList.add('hidden');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+
+      /* --------------------------- Inicio de sesión ------------------------- */
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = e.target.email.value.trim();
+        const password = e.target.password.value;
+        loginMessage.textContent = '';
+        loginMessage.classList.add('hidden');
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+          console.error('Error de inicio de sesión:', error);
+          loginMessage.textContent = 'Error: Usuario o contraseña incorrectos.';
+          loginMessage.classList.remove('hidden');
+        } 
+      });
+
+      logoutBtn.addEventListener('click', async () => {
+        await signOut(auth);
+      });
+
+
+      /* ----------------        Dashboard y listeners       ------------------ */
+      function initializeDashboard() {
+        if (dashboardInitialized) return;
+        dashboardInitialized = true;
+
+        const collectionPath = "claimForms";
+        const q = query(collection(db, collectionPath));
+
+
+        onSnapshot(q, (querySnapshot) => {
+          allClaimsData = [];
+          claimsTableBodyPendientes.innerHTML = '';
+          claimsTableBodyAtendidos.innerHTML = '';
+
+          querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const id = docSnap.id;
+            allClaimsData.push({ id, ...data });
+
+            const fecha = data.fechaEnvio?.seconds ? new Date(data.fechaEnvio.seconds * 1000).toLocaleDateString() : 'N/A';
+            const nombre = `${data.nombre || ''} ${data.apellidoPaterno || ''}`.trim();
+            const tipo = data.tipoReclamo ? data.tipoReclamo.join(', ') : 'N/A';
+            const estado = data.estado || 'Pendiente';
+
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-gray-50';
+
+            let buttonText = 'Ver / Responder';
+            let buttonClass = 'bg-blue-500 hover:bg-blue-600';
+            if (estado === 'Resuelto' || estado === 'Rechazado') {
+              buttonText = 'Ver Detalles';
+              buttonClass = 'bg-gray-500 hover:bg-gray-600';
             }
-            .row {
-                grid-template-columns: 1fr;
+
+            row.innerHTML = `
+              <td class="p-4 text-center text-sm text-gray-900">${id || 'N/A'}</td>
+              <td class="p-4 text-center text-sm text-gray-700">${fecha}</td>
+              <td class="p-4 text-sm font-medium text-gray-900">${nombre}</td>
+              <td class="p-4 text-center text-sm text-gray-700">${data.chapa || 'N/A'}</td>
+              <td class="p-4 text-left text-sm text-gray-700">${tipo}</td>
+              <td class="p-4 text-center text-sm">
+                <span class="badge ${estado === 'Resuelto' ? 'bg-green-100 text-green-700' : estado === 'Rechazado' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}">${estado}</span>
+              </td>
+              <td class="p-4 text-center">
+                <button class="view-btn px-3 py-1.5 text-sm font-semibold text-white ${buttonClass} rounded-lg shadow transition" data-id="${id}">${buttonText}</button>
+              </td>
+            `;
+
+            if (estado === 'Pendiente') {
+                claimsTableBodyPendientes.appendChild(row);
+            } else {
+                claimsTableBodyAtendidos.appendChild(row);
             }
-            .row label {
-                margin-bottom: -0.25rem;
+          });
+
+          document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              const docId = e.currentTarget.dataset.id;
+              const claim = allClaimsData.find(c => c.id === docId);
+              showModal(claim);
+            });
+          });
+        });
+
+        // Exportar a Excel
+        exportExcelBtn.addEventListener('click', () => {
+          const rows = allClaimsData.map(c => ({
+            'Serial': c.serial || 'N/A',
+            'Fecha de Envío': c.fechaEnvio?.seconds ? new Date(c.fechaEnvio.seconds * 1000).toLocaleString() : 'N/A',
+            'Nombre': `${c.nombre || ''} ${c.apellidoPaterno || ''} ${c.apellidoMaterno || ''}`.trim(),
+            'Empresa': c.empresa || '',
+            'Chapa': c.chapa || '',
+            'Cédula': c.cedula || '',
+            'Cargo': c.cargo || '',
+            'Posición': c.posicion || '',
+            'Grupo': c.grupo || '',
+            'Celular': c.celular || '',
+            'Email': c.email || '',
+            'Tipo de Reclamo': c.tipoReclamo ? c.tipoReclamo.join(', ') : '',
+            'Otro (desc.)': c.otroDescripcion || '',
+            'Detalle': c.detalle || '',
+            'Estado': c.estado || 'Pendiente',
+            'RRHH - Procede': c.rrhhData?.solicitudProcede || '',
+            'RRHH - Forma de Pago': c.rrhhData?.formaDePago || '',
+            'RRHH - Fecha de Pago': c.rrhhData?.fechaDePago || '',
+            'RRHH - Observaciones': c.rrhhData?.observaciones || '',
+            'Última Respuesta': c.ultimaRespuesta?.texto || '',
+            'Respondido Por': c.ultimaRespuesta?.por || '',
+            'Fecha Respuesta': c.ultimaRespuesta?.fecha ? new Date(c.ultimaRespuesta.fecha).toLocaleString() : ''
+          }));
+          const ws = XLSX.utils.json_to_sheet(rows);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Reclamos");
+          const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+          const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+          saveAs(blob, "Reclamos.xlsx");
+        });
+
+        // Exportar a Word
+        exportWordBtn.addEventListener('click', () => {
+          const header = `<h1 style="text-align:center;font-family:sans-serif;">Reporte de Reclamos</h1>`;
+          const tableClone = document.getElementById('claims-table-pendientes').cloneNode(true);
+          const tableClone2 = document.getElementById('claims-table-atendidos').cloneNode(true);
+          const html = `
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta charset="UTF-8">
+                <style>
+                  body{font-family:Arial, Helvetica, sans-serif}
+                  table{border-collapse:collapse;width:100%;margin-bottom:20px}
+                  th,td{border:1px solid #000;padding:8px}
+                  th{background:#f3f4f6}
+                </style>
+              </head>
+              <body>
+
+                ${header}
+                <h2>Reclamos Pendientes</h2>
+                ${tableClone.outerHTML}
+                <h2>Reclamos Atendidos</h2>
+                ${tableClone2.outerHTML}
+
+ <footer style="margin-top: 30px; font-size: 12px; text-align: center; color: #555;">
+      <p>Este formulario es de uso exclusivo para colaboradores de 
+        <b>Serviestiba S.A.</b>, <b>Portuario</b> y <b>Multiservicios</b>.
+      </p>
+      <p>La información solicitada se utiliza únicamente para fines internos de gestión.</p>
+      <p>Contacto oficial: <a href="mailto:info@serviestibasa.com">info@serviestibasa.com</a></p>
+    </footer>
+
+              </body>
+            </html>`;
+          const blob = new Blob([html], { type: 'application/msword' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'Reclamos.doc';
+          link.click();
+        });
+
+        // Exportar a PDF
+        exportPdfBtn.addEventListener('click', async () => {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('p', 'pt', 'a4');
+          const options = { scale: 2 };
+          try {
+            const canvas = await html2canvas(dashboardContent, options);
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = 595.28;
+            const pageHeight = 841.89;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            while (heightLeft >= 0) {
+              position = heightLeft - imgHeight;
+              pdf.addPage();
+              pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+              heightLeft -= pageHeight;
             }
-            .hr-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.5rem;
+            pdf.save('Reclamos.pdf');
+          } catch (err) {
+            console.error('Error al generar el PDF:', err);
+            alert('Hubo un error al generar el PDF. Por favor, intente de nuevo.');
+          }
+        });
+      }
+
+      function showModal(claim) {
+        if (!claim) return;
+
+        currentClaimId = claim.id;
+        currentClaimInfo = claim;
+
+        const isClosed = claim.estado === 'Resuelto' || claim.estado === 'Rechazado';
+        
+        let rrhhContent = '';
+        if (isClosed) {
+          rrhhContent = `
+            <div class="mt-8 bg-gray-100 border border-gray-200 rounded-2xl shadow-lg p-6 transition-opacity">
+              <h2 class="text-2xl font-extrabold text-gray-700">Reclamo Cerrado</h2>
+              <p class="text-gray-600 mt-2">Este reclamo ha sido gestionado y su estado es **${claim.estado}**. No se pueden realizar más ediciones.</p>
+              <div class="mt-4 text-sm text-gray-600">
+                <p><strong>Observaciones:</strong> ${claim.rrhhData?.observaciones || 'No hay observaciones.'}</p>
+                <p><strong>Fecha de Pago:</strong> ${claim.rrhhData?.fechaDePago || 'No aplica'}</p>
+              </div>
+            </div>
+          `;
+        } else {
+          rrhhContent = `
+            <div class="mt-8 bg-gradient-to-br from-indigo-50 to-white border border-gray-200 rounded-2xl shadow-lg p-6 transition-opacity">
+              <div class="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <h2 class="text-2xl font-extrabold text-indigo-700">Gestión Interna RRHH</h2>
+                  <p class="text-gray-600">Complete los campos internos de RRHH.</p>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs uppercase tracking-wide text-gray-500">Reclamo seleccionado</div>
+                  <div class="text-sm font-semibold text-gray-800">ID: <span id="rrhh-selected-badge" class="px-2 py-0.5 rounded bg-gray-100 border border-gray-200">${claim.id}</span></div>
+                  <div id="rrhh-selected-info" class="text-xs text-gray-600 mt-1">${claim.nombre || ''} ${claim.apellidoPaterno || ''} • ${claim.empresa || 'N/A'} • Chapa ${claim.chapa || 'N/A'}</div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Solicitud Procede</label>
+                  <div class="mt-2 flex items-center space-x-6">
+                    <label class="flex items-center gap-2 text-sm">
+                      <input id="rrhh-solicitud-si" type="radio" name="rrhh-solicitud" class="h-4 w-4 text-blue-600 border-gray-300"> Sí
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                      <input id="rrhh-solicitud-no" type="radio" name="rrhh-solicitud" class="h-4 w-4 text-blue-600 border-gray-300"> No
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Forma de Pago</label>
+                  <div class="mt-2 flex items-center space-x-6">
+                    <label class="flex items-center gap-2 text-sm">
+                      <input id="rrhh-pago-efectivo" type="radio" name="rrhh-pago" class="h-4 w-4 text-blue-600 border-gray-300"> Efectivo
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                      <input id="rrhh-pago-cheque" type="radio" name="rrhh-pago" class="h-4 w-4 text-blue-600 border-gray-300"> Cheque
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                      <input id="rrhh-pago-ach" type="radio" name="rrhh-pago" class="h-4 w-4 text-blue-600 border-gray-300"> ACH
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label for="rrhh-fecha-pago" class="block text-sm font-medium text-gray-700">Fecha de Pago</label>
+                  <input type="date" id="rrhh-fecha-pago" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                <div>
+                  <label for="rrhh-observaciones" class="block text-sm font-medium text-gray-700">Observaciones</label>
+                  <textarea id="rrhh-observaciones" rows="3" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Notas internas del caso..."></textarea>
+                </div>
+              </div>
+
+              <div class="mt-6 flex items-center justify-between">
+                <div id="rrhh-save-msg" class="text-sm text-gray-600"></div>
+                <div class="flex items-center gap-4">
+                  <button id="rrhh-save-btn" class="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow hover:bg-indigo-700 transition">
+                    Guardar Gestión RRHH
+                  </button>
+                  <button id="rrhh-send-email-btn" class="px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow hover:bg-purple-700 transition">
+                    Enviar Respuesta
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        modalContent.innerHTML = `
+          <h3 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-indigo-400 pb-2 text-center">Detalles del Reclamo</h3>
+          <div class="space-y-4 p-4 bg-gray-50 rounded-lg shadow-inner">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p class="font-semibold text-gray-700">Chapa:</p>
+                <p class="text-gray-900">${claim.chapa || 'N/A'}</p>
+              </div>
+              <div>
+                <p class="font-semibold text-gray-700">Nombre y Apellidos:</p>
+                <p class="text-gray-900">${claim.nombre || ''} ${claim.apellidoPaterno || ''} ${claim.apellidoMaterno || ''}</p>
+              </div>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-700">Tipo de Reclamo:</p>
+              <p class="text-gray-900">${claim.tipoReclamo ? claim.tipoReclamo.join(', ') : 'N/A'}</p>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-700">Detalle del Reclamo:</p>
+              <p class="text-gray-900">${claim.detalle || 'N/A'}</p>
+            </div>
+          </div>
+          ${rrhhContent}
+        `;
+
+        if (!isClosed) {
+          // LÓGICA DE GESTIÓN RRHH SOLO PARA RECLAMOS PENDIENTES
+          const rrhhProcedeSi = document.getElementById('rrhh-solicitud-si');
+          const rrhhProcedeNo = document.getElementById('rrhh-solicitud-no');
+          const rrhhPagoEf = document.getElementById('rrhh-pago-efectivo');
+          const rrhhPagoCh = document.getElementById('rrhh-pago-cheque');
+          const rrhhPagoAch = document.getElementById('rrhh-pago-ach');
+          const rrhhFecha = document.getElementById('rrhh-fecha-pago');
+          const rrhhObs = document.getElementById('rrhh-observaciones');
+          const rrhhSaveBtn = document.getElementById('rrhh-save-btn');
+          const rrhhSendEmailBtn = document.getElementById('rrhh-send-email-btn');
+          const rrhhSaveMsg = document.getElementById('rrhh-save-msg');
+
+          // Función para poblar el panel (usada ahora dentro del modal)
+          function populateRRHHPanel(claim) {
+            [rrhhProcedeSi, rrhhProcedeNo, rrhhPagoEf, rrhhPagoCh, rrhhPagoAch].forEach(r => r.checked = false);
+            rrhhFecha.value = '';
+            rrhhObs.value = '';
+
+            const r = claim.rrhhData || {};
+            if (r.solicitudProcede === 'Sí') rrhhProcedeSi.checked = true;
+            if (r.solicitudProcede === 'No') rrhhProcedeNo.checked = true;
+
+            if (r.formaDePago === 'Efectivo') rrhhPagoEf.checked = true;
+            if (r.formaDePago === 'Cheque') rrhhPagoCh.checked = true;
+            if (r.formaDePago === 'ACH') rrhhPagoAch.checked = true;
+
+            if (r.fechaDePago) {
+              try {
+                const d = new Date(r.fechaDePago);
+                if (!isNaN(d)) {
+                  const yyyy = d.getFullYear();
+                  const mm = String(d.getMonth() + 1).padStart(2, '0');
+                  const dd = String(d.getDate()).padStart(2, '0');
+                  rrhhFecha.value = `${yyyy}-${mm}-${dd}`;
+                } else {
+                  rrhhFecha.value = r.fechaDePago;
+                }
+              } catch {
+                rrhhFecha.value = r.fechaDePago;
+              }
             }
-            .doc-title {
-                text-align: left;
+            rrhhObs.value = r.observaciones || '';
+          }
+
+          // Se llama a la función para rellenar los datos del reclamo seleccionado
+          populateRRHHPanel(claim);
+
+          // Guardar Gestión RRHH (se redefine dentro del modal)
+          rrhhSaveBtn.addEventListener('click', async () => {
+            rrhhSaveMsg.textContent = '';
+            if (!currentClaimId) {
+              rrhhSaveMsg.textContent = 'Seleccione un reclamo (abra "Ver / Responder").';
+              rrhhSaveMsg.className = 'text-sm text-red-600';
+              return;
             }
+
+            const rrhhData = {
+              solicitudProcede: rrhhProcedeSi.checked ? 'Sí' : (rrhhProcedeNo.checked ? 'No' : ''),
+              formaDePago: rrhhPagoEf.checked ? 'Efectivo' : rrhhPagoCh.checked ? 'Cheque' : rrhhPagoAch.checked ? 'ACH' : '',
+              fechaDePago: rrhhFecha.value || '',
+              observaciones: rrhhObs.value || ''
+            };
+
+            const nuevoEstado = rrhhData.solicitudProcede === 'Sí' ? 'Resuelto' : (rrhhData.solicitudProcede === 'No' ? 'Rechazado' : 'Pendiente');
+
+            const respuestaObj = {
+              texto: rrhhData.observaciones || 'Sin respuesta',
+              por: 'RRHH',
+              fecha: Date.now()
+            };
             
-            .input-inline {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.25rem;
+            try {
+              const ref = doc(db, `claimForms`, currentClaimId);
+              await updateDoc(ref, { 
+                rrhhData: rrhhData,
+                estado: nuevoEstado,
+                historialRespuestas: arrayUnion(respuestaObj)
+              });
+              rrhhSaveMsg.textContent = 'Gestión RRHH guardada correctamente.';
+              rrhhSaveMsg.className = 'text-sm text-green-600';
+            } catch (err) {
+              console.error('Error guardando gestión RRHH:', err);
+              rrhhSaveMsg.textContent = 'No se pudo guardar. Intente nuevamente.';
+              rrhhSaveMsg.className = 'text-sm text-red-600';
             }
+          });
+
+          // Enviar respuesta por correo electrónico
+          rrhhSendEmailBtn.addEventListener('click', async () => {
+              if (!currentClaimInfo || !currentClaimInfo.email) {
+                  rrhhSaveMsg.textContent = 'No se pudo enviar el correo. Faltan datos del colaborador.';
+                  rrhhSaveMsg.className = 'text-sm text-red-600';
+                  return;
+              }
+
+              const rrhhData = {
+                  solicitudProcede: rrhhProcedeSi.checked ? 'Sí' : (rrhhProcedeNo.checked ? 'No' : ''),
+                  formaDePago: rrhhPagoEf.checked ? 'Efectivo' : rrhhPagoCh.checked ? 'Cheque' : rrhhPagoAch.checked ? 'ACH' : '',
+                  fechaDePago: rrhhFecha.value || '',
+                  observaciones: rrhhObs.value || ''
+              };
+
+              const nuevoEstado = rrhhData.solicitudProcede === 'Sí' ? 'Resuelto' : (rrhhData.solicitudProcede === 'No' ? 'Rechazado' : 'Pendiente');
+
+              const respuestaObj = {
+                  texto: rrhhData.observaciones || 'Sin respuesta',
+                  por: 'RRHH',
+                  fecha: Date.now()
+              };
+
+              try {
+                  // Paso 1: Actualizar el estado del reclamo en la base de datos
+                  const ref = doc(db, `claimForms`, currentClaimId);
+                  await updateDoc(ref, {
+                      rrhhData: rrhhData,
+                      estado: nuevoEstado,
+                      historialRespuestas: arrayUnion(respuestaObj)
+                  });
+                  
+                  // Paso 2: Enviar el correo electrónico
+                  await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID_HR, {
+                      to_email: currentClaimInfo.email,
+                      to_name: `${currentClaimInfo.nombre || ''} ${currentClaimInfo.apellidoPaterno || ''}`.trim(),
+                      claim_id: currentClaimInfo.id,
+                      claim_message: `Su reclamo con el ID ${currentClaimInfo.id} ha sido evaluado. Le informamos que su reclamo ${rrhhData.solicitudProcede === 'Sí' ? 'procede' : 'no procede'}.
+                      \n\nObservaciones: \n${rrhhData.observaciones || 'Se ha completado la gestión de su reclamo.'}
+                      \n\nGracias por su cooperación.`
+                  });
+
+                  rrhhSaveMsg.textContent = 'Respuesta enviada y gestión guardada.';
+                  rrhhSaveMsg.className = 'text-sm text-green-600';
+                  modal.classList.remove('modal-active');
+              } catch (err) {
+                  console.error('Error al guardar o enviar el correo:', err);
+                  rrhhSaveMsg.textContent = 'Hubo un error. Revise su configuración de EmailJS y la base de datos.';
+                  rrhhSaveMsg.className = 'text-sm text-red-600';
+              }
+          });
         }
 
-        /* Estilos para impresión */
-        @media print {
-            body {
-                background: #fff;
-            }
+        modal.classList.add('modal-active');
+      }
 
-            .page {
-                box-shadow: none;
-                border: none;
-                margin: 0;
-                border-radius: 0;
-            }
+      closeModalBtn.addEventListener('click', () => modal.classList.remove('modal-active'));
 
-            .actions, .form-send-message {
-                display: none;
-            }
+      onAuthStateChanged(auth, (user) => {
+        if (user && departmentUsers[user.email]) {
+          showSection(dashboardSection);
+          departmentTitle.textContent = `Panel de Control de Reclamos - ${departmentUsers[user.email]}`;
+          initializeDashboard();
+        } else {
+          showSection(formSection);
         }
-    </style>
+      });
+    });
+  </script>
 </head>
-<body>
-    <div class="page">
-        <form id="employment-form" action="https://formsubmit.co/your-computo@serviestibasa.com" method="POST" aria-labelledby="form-title" enctype="multipart/form-data">
-           
-             <input type="hidden" name="_captcha" value="false">
-    <input type="hidden" name="_autoresponse" value="Gracias por su interés en nuestra empresa. Hemos recibido su solicitud de empleo exitosamente y nuestro equipo de Recursos Humanos la revisará. Nos pondremos en contacto con usted en caso de que su perfil se ajuste a nuestras vacantes. ¡Le deseamos mucho éxito!">
-    <input type="hidden" name="_next" value="https://tu-sitio-web.com/gracias.html">
 
-    <fieldset>
-        <legend>Datos Personales</legend>
-        </fieldset>
+<body class="bg-gradient-to-r from-blue-500 to-indigo-600 p-8 flex flex-col items-center justify-center font-sans antialiased">
+    <div class="w-full max-w-4xl">
+        <div id="form-section" class="bg-white p-6 sm:p-10 rounded-3xl shadow-2xl w-full max-w-4xl transform transition-all duration-500">
+            <header class="flex flex-col sm:flex-row justify-between items-center mb-6 border-b-2 pb-4">
+                <div class="flex items-center justify-between w-full">
+                    <div class="flex-shrink-0">
+                        <img src="serviestiba_logo.png" alt="Serviestiba S.A." class="h-16 w-16">
+                    </div>
 
-    <div class="actions">
-        <button class="ghost" type="reset">Limpiar formulario</button>
-        <div style="flex:1"></div>
-        <button class="primary" type="submit">Enviar Solicitud</button>
-    </div>
-</form>
+                    <div class="flex flex-col items-center flex-grow mx-4">
+                        <h1 class="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-purple-600 tracking-wide leading-tight text-center">
+                            FORMULARIO DE RECLAMO
+                        </h1>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-2 text-center">
+                            Solo uso exclusivo para el personal de <b>Serviestiba S.A.</b>, <b>Portuario</b> y <b>Multiservicios</b>
+                        </p>
+                    </div>
 
-        <header>
-                <h1 id="form-title">SOLICITUD DE EMPLEO</h1>
-                <div class="today">
-                    <label for="fecha_hoy">FECHA DE HOY:</label>
-                    <input id="fecha_hoy" name="fecha_hoy" type="date" />
+                    <div class="flex-shrink-0">
+                        <img src="multiservicios_logo.png" alt="Multiservicios" class="h-16 w-16">
+                    </div>
                 </div>
             </header>
-
-            <p style="font-size: 0.875rem; margin-top: -0.5rem;">
-                POR FAVOR LLENE ESTA SOLICITUD EN LETRA LEGIBLE • LA INFORMACIÓN QUE NOS PROPORCIONE SERÁ PARA USO EXCLUSIVO DE LA EMPRESA
-            </p>
-
-            <fieldset>
-                <legend>Datos Personales</legend>
-                <div class="grid cols-3" style="margin-top: 0;">
-                    <div class="row-alt">
-                        <label for="ap_paterno">Apellido Paterno:</label>
-                        <input id="ap_paterno" type="text" name="ap_paterno" autocomplete="family-name" />
+    
+            <form id="claim-form" class="space-y-6">
+                <div class="flex flex-wrap items-center gap-4 justify-between mb-4">
+                    <div class="text-sm">
+                        <span class="font-bold">Fecha y Hora:</span> <span id="fecha-hora-reclamo"></span>
                     </div>
-                    <div class="row-alt">
-                        <label for="ap_materno">Apellido Materno:</label>
-                        <input id="ap_materno" type="text" name="ap_materno" autocomplete="additional-name" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="nombres">Nombres:</label>
-                        <input id="nombres" type="text" name="nombres" autocomplete="given-name" />
+                    <div class="flex items-center gap-3">
+                        <label for="chapa" class="font-bold">Chapa:</label>
+                        <input type="text" id="chapa" name="chapa" class="p-1 border-b-2 border-gray-300 focus:border-blue-500 w-32 outline-none">
+                        <label for="empresa" class="font-bold ml-4">Empresa:</label>
+                        <select id="empresa" name="empresa" class="p-1 border-b-2 border-gray-300 focus:border-blue-500 w-56 outline-none" required>
+                            <option value="">Seleccione una empresa</option>
+                            <option value="SERVIESTIBA">SERVIESTIBA</option>
+                            <option value="PORTUARIO">PORTUARIO</option>
+                            <option value="MULTISERVICIO">MULTISERVICIO</option>
+                        </select>
                     </div>
                 </div>
-
-                <div class="grid cols-4">
-                    <div class="row-alt" style="grid-column: span 2;">
-                        <label for="direccion">Dirección residencial:</label>
-                        <input id="direccion" type="text" name="direccion" autocomplete="address-line1" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="ciudad">Ciudad:</label>
-                        <input id="ciudad" type="text" name="ciudad" autocomplete="address-level2" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="edad">Edad:</label>
-                        <input id="edad" type="number" name="edad" min="0" inputmode="numeric" />
-                    </div>
-                </div>
-
-                <div class="grid cols-4">
-                    <div class="row-alt">
-                        <label for="celular">Celular:</label>
-                        <input id="celular" type="tel" name="celular" autocomplete="tel" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="telefono">Teléfono:</label>
-                        <input id="telefono" type="tel" name="telefono" autocomplete="tel" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="estatura">Estatura (cm):</label>
-                        <input id="estatura" type="number" name="estatura" inputmode="numeric" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="peso">Peso (kg):</label>
-                        <input id="peso" type="number" name="peso" step="0.1" inputmode="decimal" />
-                    </div>
-                </div>
-
-                <div class="grid cols-3">
-                    <div class="row-alt">
-                        <label for="talla_sueter">Talla Suéter:</label>
-                        <input id="talla_sueter" type="text" name="talla_sueter" style="max-width: 120px;" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="talla_pantalon">Talla Pantalón:</label>
-                        <input id="talla_pantalon" type="text" name="talla_pantalon" style="max-width: 120px;" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="talla_botas">Talla Botas:</label>
-                        <input id="talla_botas" type="text" name="talla_botas" style="max-width: 120px;" />
-                    </div>
-                </div>
+                <p id="chapa-error" class="text-xs text-red-500 -mt-1 mb-4"></p>
                 
-                <div class="grid cols-4">
-                    <div class="row-alt">
-                        <label for="fecha_nac">Fecha de Nacimiento:</label>
-                        <input id="fecha_nac" type="date" name="fecha_nac" autocomplete="bday" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="lugar_nac">Lugar de Nacimiento:</label>
-                        <input id="lugar_nac" type="text" name="lugar_nac" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="nacionalidad">Nacionalidad:</label>
-                        <input id="nacionalidad" type="text" name="nacionalidad" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="estado_civil">Estado Civil:</label>
-                        <input id="estado_civil" type="text" name="estado_civil" />
-                    </div>
-                </div>
-                
-                <div class="grid cols-4">
-                    <div class="row-alt">
-                        <label for="cedula">No. Cédula:</label>
-                        <input id="cedula" type="text" name="cedula" autocomplete="off" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="correo">Correo electrónico:</label>
-                        <input id="correo" type="email" name="correo" autocomplete="email" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="seguro">No. Seguro Social:</label>
-                        <input id="seguro" type="text" name="seguro" />
-                    </div>
-                    <div class="row-alt">
-                        <label for="sangre">Tipo de sangre:</label>
-                        <input id="sangre" type="text" name="sangre" />
-                    </div>
-                </div>
+                <fieldset class="border-2 border-gray-200 p-6 rounded-xl">
+                    <legend class="px-2 text-lg font-bold text-gray-800">Datos del Colaborador</legend>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 mt-4">
+                        <div>
+                            <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre</label>
+                            <input type="text" id="nombre" name="nombre" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                        </div>
+                        <div>
+                            <label for="apellidoPaterno" class="block text-sm font-medium text-gray-700">Apellido Paterno</label>
+                            <input type="text" id="apellidoPaterno" name="apellidoPaterno" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                        </div>
+                        <div>
+                            <label for="apellidoMaterno" class="block text-sm font-medium text-gray-700">Apellido Materno</label>
+                            <input type="text" id="apellidoMaterno" name="apellidoMaterno" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
 
-                <div class="grid cols-4">
-                    <div class="row-alt">
-                        <label>Sexo:</label>
-                        <div class="radio-group" role="radiogroup" aria-label="Sexo">
-                            <label><input type="radio" name="sexo" value="F" /> F</label>
-                            <label><input type="radio" name="sexo" value="M" /> M</label>
+                        <div>
+                            <label for="cedula" class="block text-sm font-medium text-gray-700">Cédula</label>
+                            <input type="text" id="cedula" name="cedula" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                        </div>
+                        <div> 
+                            <label for="posicion" class="block text-sm font-medium text-gray-700">Posición</label>
+                            <select id="posicion" name="posicion" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Seleccione la posición</option>
+                                <option value="">ABOGADO</option>
+                                <option value="">ALMACENISTA</option>
+                                <option value="">ASESOR DE TALLER</option>
+                                <option value="">ASISTENTE CONTABLE</option>
+                                <option value="">ASISTENTE</option>
+                                <option value="">AYUDANTE</option>
+                                <option value="">CORDINADO DE REEFER</option>
+                                <option value="">CORDINADOR DE TRINCA</option>
+                                <option value="">CORDINADOR LEGAL</option>
+                                <option value="">GERENTES</option>
+                                <option value="">INSTRUCTOR DE REEFER</option>
+                                <option value="">JEFES</option>
+                                <option value="">LABOR CONTROL</option>
+                                <option value="">LAVADOR</option>
+                                <option value="">LLANTERO</option>
+                                <option value="">MECANICO</option>
+                                <option value="">MEDICO OCUPACIONAL</option>
+                                <option value="">OFICIALES</option>
+                                <option value="">PERIODISTA</option>
+                                <option value="">SOLDADOR</option>
+                                <option value="">SUBGERENTES</option>
+                                <option value="">SUPERINTENDENTES</option>
+                                <option value="">SUPERVISORES</option>
+                                <option value="">TECNICO DE A/A</option>
+                                <option value="">TECNICO EN INFORMATICO</option>
+                                <option value="">ESTIBADOR</option>
+                                <option value="">OPERADO DE EQUIPO PESADO</option>
+                                <option value="">OPERADOR DE TRACTOR Y REMOLQUE</option>
+                                <option value="">TEJEDOR DE CABLE</option>
+                                <option value="">VERIFICADORES</option>
+                                <option value="">WINCHERO</option>
+                                <option value="">CONDUCTOR</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="grupo" class="block text-sm font-medium text-gray-700">Grupo</label>
+                            <select id="grupo" name="grupo" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Seleccione su grupo</option>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="c">C</option>
+                                <option value="c">D</option>
+                                <option value="Asignados">Asignados</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="celular" class="block text-sm font-medium text-gray-700">Celular / Whatsapp</label>
+                            <input type="tel" id="celular" name="celular" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                            <input type="email" id="email" name="email" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
                         </div>
                     </div>
-                    <div class="row-alt">
-                        <label>Licencia de Conducir:</label>
-                        <div class="radio-group" role="radiogroup" aria-label="Licencia de Conducir">
-                            <label><input type="radio" name="licencia" value="si"> Sí</label>
-                            <label><input type="radio" name="licencia" value="no"> No</label>
+                </fieldset>
+
+                <fieldset class="border-2 border-gray-200 p-6 rounded-xl">
+                    <legend class="px-2 text-lg font-bold text-gray-800">Tipo de Reclamo</legend>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                        <div class="space-y-4">
+                            <div class="flex items-center">
+                                <input id="tiempoNoComputado" name="tipoReclamo" type="checkbox" value="Tiempo no computado" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="tiempoNoComputado" class="ml-2 block text-sm text-gray-900">Tiempo no computado</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="viacticos" name="tipoReclamo" type="checkbox" value="Viáticos" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="viacticos" class="ml-2 block text-sm text-gray-900">Viáticos</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="incapacidades" name="tipoReclamo" type="checkbox" value="Incapacidades" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="incapacidades" class="ml-2 block text-sm text-gray-900">Incapacidades</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="inclusionExclusionAcreedor" name="tipoReclamo" type="checkbox" value="Inclusión/exclusión de acreedor" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="inclusionExclusionAcreedor" class="ml-2 block text-sm text-gray-900">Inclusión/exclusión de acreedor</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="rataSalarial" name="tipoReclamo" type="checkbox" value="Rata salarial" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="rataSalarial" class="ml-2 block text-sm text-gray-900">Rata salarial</label>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex items-center">
+                                <input id="comida" name="tipoReclamo" type="checkbox" value="Comida" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="comida" class="ml-2 block text-sm text-gray-900">Comida</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="bono" name="tipoReclamo" type="checkbox" value="Bono" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="bono" class="ml-2 block text-sm text-gray-900">Bono</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="xiiiMes" name="tipoReclamo" type="checkbox" value="XIII Mes" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="xiiiMes" class="ml-2 block text-sm text-gray-900">XIII Mes</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="reemvolsoODevolucion" name="tipoReclamo" type="checkbox" value="Reembolso o devolución" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="reemvolsoODevolucion" class="ml-2 block text-sm text-gray-900">Reembolso o devolución</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="otro" name="tipoReclamo" type="checkbox" value="Otro" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="otro" class="ml-2 block text-sm text-gray-900">Otro</label>
+                            </div>
                         </div>
                     </div>
-                    <div class="row-alt">
-                        <label for="lic_tipo">Tipo (licencia):</label>
-                        <input id="lic_tipo" type="text" name="lic_tipo" />
+                    <div id="otroContainer" class="mt-4">
+                        <label for="otroDescripcion" class="block text-sm font-medium text-gray-700">Por favor, especifique el tipo de reclamo:</label>
+                        <input type="text" id="otroDescripcion" name="otroDescripcion" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                     </div>
-                    <div class="row-alt">
-                        <label for="lic_venc">Venc. licencia:</label>
-                        <input id="lic_venc" type="date" name="lic_venc" />
-                    </div>
-                </div>
+                </fieldset>
 
-                <div class="grid cols-2" style="margin-top: 1rem;">
-                    <div class="row-alt">
-                        <label>Posee Vehículo:</label>
-                        <div class="radio-group" role="radiogroup" aria-label="Posee Vehículo">
-                            <label><input type="radio" name="vehiculo" value="si"> Sí</label>
-                            <label><input type="radio" name="vehiculo" value="no"> No</label>
-                        </div>
-                    </div>
-                    <div class="row-alt">
-                        <label>Si es Extranjero: ¿Posee permiso para laborar en territorio panameño?</label>
-                        <div class="radio-group" role="radiogroup" aria-label="Permiso para laborar">
-                            <label><input type="radio" name="permiso" value="si"> Sí</label>
-                            <label><input type="radio" name="permiso" value="no"> No</label>
-                        </div>
-                    </div>
-                </div>
-            </fieldset>
-
-            <fieldset>
-                <legend>Personas que dependen de usted</legend>
-                <table class="table" aria-labelledby="dependientes-body">
-                    <caption class="sr-only">Listado de personas dependientes</caption>
-                    <thead>
-                        <tr>
-                            <th scope="col">Nombre</th>
-                            <th scope="col" style="width: 80px;">Edad</th>
-                            <th scope="col" style="width: 150px;">Parentesco</th>
-                            <th scope="col">Vive con</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dependientes-body">
-                        <tr>
-                            <td><input type="text" name="dep_nombre[]" aria-label="Nombre del dependiente"></td>
-                            <td><input type="number" name="dep_edad[]" min="0" aria-label="Edad del dependiente"></td>
-                            <td><input type="text" name="dep_parentesco[]" aria-label="Parentesco del dependiente"></td>
-                            <td>
-                                <div class="radio-group" role="radiogroup" aria-label="Vive con el dependiente">
-                                    <label><input type="radio" name="vive_con_0" value="padres"> Sus Padres</label>
-                                    <label><input type="radio" name="vive_con_0" value="familia"> Su Familia</label>
-                                    <label><input type="radio" name="vive_con_0" value="parientes"> Parientes</label>
-                                    <label><input type="radio" name="vive_con_0" value="solo"> Solo</label>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="actions" style="justify-content: flex-start; margin-top: 1rem;">
-                    <button class="ghost" type="button" onclick="agregarFila('dependientes-body')">Añadir dependiente</button>
-                    <button class="muted" type="button" onclick="eliminarFila('dependientes-body')">Eliminar último</button>
-                </div>
-            </fieldset>
-
-            <fieldset>
-                <legend>Estado de Salud</legend>
-                <div class="grid cols-3">
-                    <div class="row"><label>Padece Enfermedad Crónica:</label><div class="radio-group" role="radiogroup" aria-label="Enfermedad Crónica"><label><input type="radio" name="cronica" value="no"> No</label><label><input type="radio" name="cronica" value="si"> Sí</label></div></div>
-                    <div class="row"><label for="otro_salud">Otro (Explique):</label><input id="otro_salud" type="text" name="otro_salud" /></div>
-                    <div class="row"><label for="usa_lentes">Usa Lentes:</label><div class="radio-group" role="radiogroup" aria-label="Usa lentes"><label><input type="radio" name="lentes" value="si"> Sí</label><label><input type="radio" name="lentes" value="no"> No</label></div></div>
-                </div>
-                <div class="grid cols-3">
-                    <div class="row"><label for="fuma">Fuma:</label><div class="radio-group" role="radiogroup" aria-label="Fuma"><label><input type="radio" name="fuma" value="si"> Sí</label><label><input type="radio" name="fuma" value="no"> No</label></div></div>
-                    <div class="row"><label for="toma">Toma (alcohol/medicación):</label><input id="toma" type="text" name="toma" /></div>
-                </div>
-            </fieldset>
-            
-            <fieldset>
-                <legend>Datos Familiares</legend>
-                <table class="table">
-                    <caption class="sr-only">Datos de familiares cercanos</caption>
-                    <thead>
-                        <tr>
-                            <th scope="col" style="width: 15%;">Parentesco</th>
-                            <th scope="col">Nombre</th>
-                            <th scope="col" style="width: 10%;">Edad</th>
-                            <th scope="col">Dirección</th>
-                            <th scope="col" style="width: 20%;">Ocupación</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <th scope="row">Padre:</th>
-                            <td><input type="text" name="padre_nombre" aria-label="Nombre del padre"></td>
-                            <td><input type="number" name="padre_edad" min="0" aria-label="Edad del padre"></td>
-                            <td><input type="text" name="padre_dir" aria-label="Dirección del padre"></td>
-                            <td><input type="text" name="padre_ocup" aria-label="Ocupación del padre"></td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Madre:</th>
-                            <td><input type="text" name="madre_nombre" aria-label="Nombre de la madre"></td>
-                            <td><input type="number" name="madre_edad" min="0" aria-label="Edad de la madre"></td>
-                            <td><input type="text" name="madre_dir" aria-label="Dirección de la madre"></td>
-                            <td><input type="text" name="madre_ocup" aria-label="Ocupación de la madre"></td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Esposa(o):</th>
-                            <td><input type="text" name="esposo_nombre" aria-label="Nombre de esposo(a)"></td>
-                            <td><input type="number" name="esposo_edad" min="0" aria-label="Edad de esposo(a)"></td>
-                            <td><input type="text" name="esposo_dir" aria-label="Dirección de esposo(a)"></td>
-                            <td><input type="text" name="esposo_ocup" aria-label="Ocupación de esposo(a)"></td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Hijo(s):</th>
-                            <td><input type="text" name="hijos_nombre" aria-label="Nombre de hijo(s)"></td>
-                            <td><input type="number" name="hijos_edad" min="0" aria-label="Edad de hijo(s)"></td>
-                            <td><input type="text" name="hijos_dir" aria-label="Dirección de hijo(s)"></td>
-                            <td><input type="text" name="hijos_ocup" aria-label="Ocupación de hijo(s)"></td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="grid cols-2" style="margin-top:1rem">
-                    <div class="row"><label for="emerg_contacto">En caso de emergencia contactar a:</label><input id="emerg_contacto" type="text" name="emerg_contacto"></div>
-                    <div class="row"><label for="emerg_telefono">Teléfono:</label><input id="emerg_telefono" type="tel" name="emerg_telefono" autocomplete="tel"></div>
-                </div>
-            </fieldset>
-
-            <fieldset>
-                <legend>Escolaridad</legend>
-                <table class="table">
-                    <caption class="sr-only">Información de estudios realizados</caption>
-                    <thead>
-                        <tr><th scope="col">Nivel</th><th scope="col">Nombre de la Escuela</th><th scope="col">Dirección</th><th scope="col">Fechas Desde</th><th scope="col">Fechas Hasta</th><th scope="col">Título Obtenido</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><th scope="row">Primaria:</th><td><input type="text" name="pri_escuela" aria-label="Nombre escuela primaria"></td><td><input type="text" name="pri_dir" aria-label="Dirección primaria"></td><td><input type="date" name="pri_desde" aria-label="Desde primaria"></td><td><input type="date" name="pri_hasta" aria-label="Hasta primaria"></td><td><input type="text" name="pri_titulo" aria-label="Título primaria"></td></tr>
-                        <tr><th scope="row">Secundaria:</th><td><input type="text" name="sec_escuela" aria-label="Nombre escuela secundaria"></td><td><input type="text" name="sec_dir" aria-label="Dirección secundaria"></td><td><input type="date" name="sec_desde" aria-label="Desde secundaria"></td><td><input type="date" name="sec_hasta" aria-label="Hasta secundaria"></td><td><input type="text" name="sec_titulo" aria-label="Título secundaria"></td></tr>
-                        <tr><th scope="row">Universidad:</th><td><input type="text" name="uni_escuela" aria-label="Nombre universidad"></td><td><input type="text" name="uni_dir" aria-label="Dirección universidad"></td><td><input type="date" name="uni_desde" aria-label="Desde universidad"></td><td><input type="date" name="uni_hasta" aria-label="Hasta universidad"></td><td><input type="text" name="uni_titulo" aria-label="Título universidad"></td></tr>
-                        <tr><th scope="row">Otro:</th><td><input type="text" name="otro_escuela" aria-label="Nombre otro estudio"></td><td><input type="text" name="otro_dir" aria-label="Dirección otro"></td><td><input type="date" name="otro_desde" aria-label="Desde otro"></td><td><input type="date" name="otro_hasta" aria-label="Hasta otro"></td><td><input type="text" name="otro_titulo" aria-label="Título otro"></td></tr>
-                    </tbody>
-                </table>
-                <div class="row" style="margin-top:1rem;"><label>¿Está usted actualmente estudiando?</label><div class="radio-group" role="radiogroup" aria-label="Actualmente estudiando"><label><input type="radio" name="estudia" value="si"> Sí</label><label><input type="radio" name="estudia" value="no"> No</label></div></div>
-                <div class="grid cols-4">
-                    <div class="row"><label for="centro_edu">Centro Educativo:</label><input id="centro_edu" type="text" name="centro_edu"></div>
-                    <div class="row"><label for="horario_estudio">Horario:</label><input id="horario_estudio" type="text" name="horario_estudio"></div>
-                    <div class="row"><label for="curso_carrera">Curso o Carrera:</label><input id="curso_carrera" type="text" name="curso_carrera"></div>
-                    <div class="row"><label for="grado">Grado:</label><input id="grado" type="text" name="grado"></div>
-                </div>
-            </fieldset>
-
-            <fieldset>
-                <legend>Empleo Actual y Anteriores</legend>
-                <table class="table">
-                    <caption class="sr-only">Historial de empleos</caption>
-                    <thead>
-                        <tr><th scope="col">Concepto</th><th scope="col">Empleo Actual o Último</th><th scope="col">Empleo Anterior</th><th scope="col">Empleo Anterior</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><th scope="row">Nombre de la Compañía</th><td><input type="text" name="emp1_nombre" aria-label="Compañía empleo actual"></td><td><input type="text" name="emp2_nombre" aria-label="Compañía empleo anterior 1"></td><td><input type="text" name="emp3_nombre" aria-label="Compañía empleo anterior 2"></td></tr>
-                        <tr><th scope="row">Tiempo de servicio</th><td><input type="text" name="emp1_tiempo" aria-label="Tiempo empleo actual"></td><td><input type="text" name="emp2_tiempo" aria-label="Tiempo empleo anterior 1"></td><td><input type="text" name="emp3_tiempo" aria-label="Tiempo empleo anterior 2"></td></tr>
-                        <tr><th scope="row">Dirección</th><td><input type="text" name="emp1_dir" aria-label="Dirección empleo actual"></td><td><input type="text" name="emp2_dir" aria-label="Dirección empleo anterior 1"></td><td><input type="text" name="emp3_dir" aria-label="Dirección empleo anterior 2"></td></tr>
-                        <tr><th scope="row">Teléfono</th><td><input type="text" name="emp1_tel" aria-label="Teléfono empleo actual"></td><td><input type="text" name="emp2_tel" aria-label="Teléfono empleo anterior 1"></td><td><input type="text" name="emp3_tel" aria-label="Teléfono empleo anterior 2"></td></tr>
-                        <tr><th scope="row">Puesto</th><td><input type="text" name="emp1_puesto" aria-label="Puesto empleo actual"></td><td><input type="text" name="emp2_puesto" aria-label="Puesto empleo anterior 1"></td><td><input type="text" name="emp3_puesto" aria-label="Puesto empleo anterior 2"></td></tr>
-                        <tr>
-                            <th scope="row">Salario</th>
-                            <td>
-                                <input type="text" name="emp1_sal_ini" placeholder="Inicial" aria-label="Salario inicial empleo actual">
-                                <input type="text" name="emp1_sal_fin" placeholder="Final" aria-label="Salario final empleo actual">
-                            </td>
-                            <td>
-                                <input type="text" name="emp2_sal_ini" placeholder="Inicial" aria-label="Salario inicial empleo anterior 1">
-                                <input type="text" name="emp2_sal_fin" placeholder="Final" aria-label="Salario final empleo anterior 1">
-                            </td>
-                            <td>
-                                <input type="text" name="emp3_sal_ini" placeholder="Inicial" aria-label="Salario inicial empleo anterior 2">
-                                <input type="text" name="emp3_sal_fin" placeholder="Final" aria-label="Salario final empleo anterior 2">
-                            </td>
-                        </tr>
-                        <tr><th scope="row">Motivo de salida</th><td><input type="text" name="emp1_salida" aria-label="Motivo de salida empleo actual"></td><td><input type="text" name="emp2_salida" aria-label="Motivo de salida empleo anterior 1"></td><td><input type="text" name="emp3_salida" aria-label="Motivo de salida empleo anterior 2"></td></tr>
-                        <tr><th scope="row">Jefe Inmediato</th><td><input type="text" name="emp1_jefe" aria-label="Jefe inmediato empleo actual"></td><td><input type="text" name="emp2_jefe" aria-label="Jefe inmediato empleo anterior 1"></td><td><input type="text" name="emp3_jefe" aria-label="Jefe inmediato empleo anterior 2"></td></tr>
-                        <tr><th scope="row">Puesto del Jefe</th><td><input type="text" name="emp1_puesto_jefe" aria-label="Puesto jefe inmediato empleo actual"></td><td><input type="text" name="emp2_puesto_jefe" aria-label="Puesto jefe inmediato empleo anterior 1"></td><td><input type="text" name="emp3_puesto_jefe" aria-label="Puesto jefe inmediato empleo anterior 2"></td></tr>
-                    </tbody>
-                </table>
-            </fieldset>
-
-            <fieldset>
-                <legend>Referencias (No Familiares)</legend>
-                <table class="table" id="referencias-table">
-                    <caption class="sr-only">Referencias personales no familiares</caption>
-                    <thead>
-                        <tr><th scope="col">Nombre</th><th scope="col">Parentesco</th><th scope="col">Dirección</th><th scope="col">Teléfono</th><th scope="col">Ocupación</th><th scope="col">Tiempo de Conocerlo</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td><input type="text" name="ref1_nombre" aria-label="Nombre referencia 1"></td><td><input type="text" name="ref1_parentesco" aria-label="Parentesco referencia 1"></td><td><input type="text" name="ref1_dir" aria-label="Dirección referencia 1"></td><td><input type="text" name="ref1_tel" aria-label="Teléfono referencia 1"></td><td><input type="text" name="ref1_ocup" aria-label="Ocupación referencia 1"></td><td><input type="text" name="ref1_tiempo" aria-label="Tiempo de conocerlo referencia 1"></td></tr>
-                        <tr><td><input type="text" name="ref2_nombre" aria-label="Nombre referencia 2"></td><td><input type="text" name="ref2_parentesco" aria-label="Parentesco referencia 2"></td><td><input type="text" name="ref2_dir" aria-label="Dirección referencia 2"></td><td><input type="text" name="ref2_tel" aria-label="Teléfono referencia 2"></td><td><input type="text" name="ref2_ocup" aria-label="Ocupación referencia 2"></td><td><input type="text" name="ref2_tiempo" aria-label="Tiempo de conocerlo referencia 2"></td></tr>
-                    </tbody>
-                </table>
-            </fieldset>
-
-            <fieldset>
-                <legend>Datos Generales</legend>
-                <div class="grid cols-2">
-                    <div class="row"><label for="como_enterado">Cómo se enteró del empleo:</label><input id="como_enterado" type="text" name="como_enterado"></div>
-                    <div class="row"><label>Tiene familiares o conocidos en esta empresa:</label><div class="radio-group" role="radiogroup" aria-label="Familiares en la empresa"><label><input type="radio" name="familiares_empresa" value="si"> Sí</label><label><input type="radio" name="familiares_empresa" value="no"> No</label></div></div>
-                </div>
-                <div class="grid cols-2">
-                    <div class="row"><label for="nombre_familiar">Nombre:</label><input id="nombre_familiar" type="text" name="nombre_familiar"></div>
-                    <div class="row"><label for="parentesco_familiar">Parentesco:</label><input id="parentesco_familiar" type="text" name="parentesco_familiar"></div>
-                </div>
-                <div class="grid cols-2">
-                    <div class="row"><label>¿Ha trabajado anteriormente en Serviestiba o PPC?</label><div class="radio-group" role="radiogroup" aria-label="Trabajo previo en Serviestiba o PPC"><label><input type="radio" name="trabajo_prev" value="si"> Sí</label><label><input type="radio" name="trabajo_prev" value="no"> No</label></div></div>
-                    <div class="row"><label for="motivo_salida_prev">Motivo de salida:</label><input id="motivo_salida_prev" type="text" name="motivo_salida_prev"></div>
-                </div>
-                <div class="grid cols-2">
-                    <div class="row"><label>¿Pertenece a algún sindicato?</label><div class="radio-group" role="radiogroup" aria-label="Pertenece a sindicato"><label><input type="radio" name="sindicato" value="si"> Sí</label><label><input type="radio" name="sindicato" value="no"> No</label></div></div>
-                    <div class="row"><label for="cual_sindicato">¿Cuál?</label><input id="cual_sindicato" type="text" name="cual_sindicato"></div>
-                </div>
-            </fieldset>
-
-            <fieldset>
-                <legend>Información Adicional</legend>
-                <div class="grid cols-2">
-                    <div class="row"><label>Disponibilidad para viajar:</label><div class="radio-group" role="radiogroup" aria-label="Disponibilidad para viajar"><label><input type="radio" name="viajar" value="si"> Sí</label><label><input type="radio" name="viajar" value="no"> No</label></div></div>
-                    <div class="row"><label for="viajar_razon">Por qué:</label><input id="viajar_razon" type="text" name="viajar_razon" aria-label="Razón para disponibilidad de viaje"></div>
-                </div>
-            </fieldset>
-            
-            <div class="note" role="note" aria-label="Declaración del solicitante">
-                <strong>Declaración del solicitante:</strong>
-                Certifico que toda la información que he previsto en esta solicitud de empleo es verdadera, completa y correcta.
-                Autorizo a la empresa para que verifique mis referencias laborales y personales, así como la veracidad de mis títulos,
-                acreditaciones y licencias. Entiendo y acepto que la empresa se reserva de tomar acciones disciplinarias que estime
-                convenientes en caso de que encuentre información dada de forma incompleta, incorrecta o injustificada.
-                <div style="margin-top: 10px;">
-                    <label for="firma" class="sr-only">Firma:</label>
-                    <input id="firma" type="text" name="firma" placeholder="Firma del solicitante" style="height:48px" aria-label="Firma">
-                </div>
-            </div>
-
-            <div style="margin-top:1.5rem">
-                <strong>Documentos que debe incluir el solicitante:</strong>
-                <div class="doc-upload-grid">
-                    <div class="doc-upload-item">
-                        <label for="cedula_file">Copia de Cédula:</label>
-                        <input type="file" id="cedula_file" name="cedula_file" accept="image/*,application/pdf" multiple />
-                    </div>
-                    <div class="doc-upload-item">
-                        <label for="licencia_file">Copia de la Licencia:</label>
-                        <input type="file" id="licencia_file" name="licencia_file" accept="image/*,application/pdf" multiple />
-                    </div>
-                    <div class="doc-upload-item">
-                        <label for="diplomas_file">Copia de Diplomas:</label>
-                        <input type="file" id="diplomas_file" name="diplomas_file" accept="image/*,application/pdf" multiple />
-                    </div>
-                    <div class="doc-upload-item">
-                        <label for="record_policivo_file">Record policivo:</label>
-                        <input type="file" id="record_policivo_file" name="record_policivo_file" accept="image/*,application/pdf" multiple />
-                    </div>
-                    <div class="doc-upload-item">
-                        <label for="cartas_ref_file">Cartas de referencias:</label>
-                        <input type="file" id="cartas_ref_file" name="cartas_ref_file" accept="image/*,application/pdf" multiple />
-                    </div>
-                    <div class="doc-upload-item">
-                        <label for="cta_bgeneral">Número de Cuenta de Banco General (Si Posee):</label>
-                        <input type="text" id="cta_bgeneral" name="cta_bgeneral" style="width: 100%;" aria-label="Número de Cuenta de Banco General">
-                    </div>
-                    <div class="doc-upload-item">
-                        <label for="otros_file">Otros documentos:</label>
-                        <input type="file" id="otros_file" name="otros_file" accept="image/*,application/pdf" multiple />
-                    </div>
-                </div>
-            </div>
-            
-            <input type="hidden" name="_captcha" value="false">
-            <input type="hidden" name="_next" value="https://tu-sitio-web.com/gracias.html">
-            
-            <div class="actions">
-                <button class="ghost" type="reset">Limpiar formulario</button>
-                <div style="flex:1"></div>
-                <button class="primary" type="submit">Enviar Solicitud</button>
-            </div>
-        </form>
-
-        <div style="margin-top: 2rem;">
-            <div class="hr-header">
-                <div class="logo-box">SERVI · ESTIBA, S.A.</div>
-                <div class="doc-title">PARA USO EXCLUSIVO DE RECURSOS HUMANOS</div>
-            </div>
-            <fieldset>
-                <table class="table">
-                    <tbody>
-                        <tr>
-                            <th scope="row" style="width: 25%;">Posición a la que aplica:</th>
-                            <td><input type="text" name="hr_posicion" aria-label="Posición a la que aplica (RRHH)"></td>
-                            <th scope="row" style="width: 20%;">Salario aspirado:</th>
-                            <td><input type="text" name="hr_salario_asp" aria-label="Salario aspirado (RRHH)"></td>
-                            <th scope="row" style="width: 15%;">Disponibilidad:</th>
-                            <td><input type="text" name="hr_disponibilidad" aria-label="Disponibilidad (RRHH)"></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </fieldset>
-
-            <fieldset>
-                <legend>Evaluación de Entrevista</legend>
-                <div class="grid cols-2" style="margin-top: 0;">
-                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
-                        <p style="font-weight: 700;">ACTITUD DEL ENTREVISTADO</p>
-                        <div class="radio-group" role="radiogroup" aria-label="Actitud del entrevistado">
-                            <label><input type="radio" name="hr_actitud" value="buena"> Buena</label>
-                            <label><input type="radio" name="hr_actitud" value="regular"> Regular</label>
-                            <label><input type="radio" name="hr_actitud" value="mala"> Mala</label>
-                        </div>
-                    </div>
+                <div class="space-y-4">
                     <div>
-                        <p style="font-weight: 700;">OBSERVACIONES</p>
-                        <textarea name="hr_obs_actitud" aria-label="Observaciones sobre actitud (RRHH)"></textarea>
+                        <label for="detalle" class="block text-sm font-medium text-gray-700">Detalle del Reclamo</label>
+                        <textarea id="detalle" name="detalle" rows="4" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required></textarea>
                     </div>
                 </div>
-
-                <div class="grid cols-2" style="margin-top: 1rem;">
-                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
-                        <p style="font-weight: 700;">DOMINIO DE FUNCIONES Y CONOCIMIENTOS</p>
-                        <div class="radio-group" role="radiogroup" aria-label="Dominio de funciones y conocimientos">
-                            <label><input type="radio" name="hr_dominio" value="buena"> Buena</label>
-                            <label><input type="radio" name="hr_dominio" value="regular"> Regular</label>
-                            <label><input type="radio" name="hr_dominio" value="mala"> Mala</label>
-                        </div>
-                    </div>
-                    <div>
-                        <p style="font-weight: 700;">OBSERVACIONES</p>
-                        <textarea name="hr_obs_dominio" aria-label="Observaciones sobre dominio (RRHH)"></textarea>
-                    </div>
+                <div class="flex flex-col items-center gap-4 mt-6">
+                    <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold rounded-lg shadow-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 ease-in-out transform hover:scale-105">
+                        Enviar Reclamo
+                    </button>
+                    <button id="go-to-dashboard" type="button" class="w-full sm:w-auto px-6 py-3 bg-gray-500 text-white font-bold rounded-lg shadow-lg hover:bg-gray-600 transition-all duration-300 ease-in-out transform hover:scale-105">
+                        Ir al Panel de Control
+                    </button>
                 </div>
-
-                <div class="grid cols-2" style="margin-top: 1rem;">
-                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
-                        <p style="font-weight: 700;">TOMA DE DECISIONES</p>
-                        <div class="radio-group" role="radiogroup" aria-label="Toma de decisiones">
-                            <label><input type="radio" name="hr_decisiones" value="buena"> Buena</label>
-                            <label><input type="radio" name="hr_decisiones" value="regular"> Regular</label>
-                            <label><input type="radio" name="hr_decisiones" value="mala"> Mala</label>
-                        </div>
-                    </div>
-                    <div>
-                        <p style="font-weight: 700;">OBSERVACIONES</p>
-                        <textarea name="hr_obs_decisiones" aria-label="Observaciones sobre decisiones (RRHH)"></textarea>
-                    </div>
+                <div id="loading-spinner" class="hidden text-center mt-4">
+                    <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                 </div>
-
-                <div class="grid cols-2" style="margin-top: 1rem;">
-                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
-                        <p style="font-weight: 700;">INFLUENCIA DE LIDERAZGO</p>
-                        <div class="radio-group" role="radiogroup" aria-label="Influencia de liderazgo">
-                            <label><input type="radio" name="hr_liderazgo" value="buena"> Buena</label>
-                            <label><input type="radio" name="hr_liderazgo" value="regular"> Regular</label>
-                            <label><input type="radio" name="hr_liderazgo" value="mala"> Mala</label>
-                        </div>
-                    </div>
-                    <div>
-                        <p style="font-weight: 700;">OBSERVACIONES</p>
-                        <textarea name="hr_obs_liderazgo" aria-label="Observaciones sobre liderazgo (RRHH)"></textarea>
-                    </div>
+                <div id="success-message" class="hidden text-center mt-4 p-4 rounded-lg bg-green-100 text-green-700 font-medium">
+                    ¡Reclamo enviado con éxito!
                 </div>
-
-                <div class="grid cols-2" style="margin-top: 1rem;">
-                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
-                        <p style="font-weight: 700;">PARTICIPACIÓN EN EQUIPO</p>
-                        <div class="radio-group" role="radiogroup" aria-label="Participación en equipo">
-                            <label><input type="radio" name="hr_equipo" value="buena"> Buena</label>
-                            <label><input type="radio" name="hr_equipo" value="regular"> Regular</label>
-                            <label><input type="radio" name="hr_equipo" value="mala"> Mala</label>
-                        </div>
-                    </div>
-                    <div>
-                        <p style="font-weight: 700;">OBSERVACIONES</p>
-                        <textarea name="hr_obs_equipo" aria-label="Observaciones sobre participación en equipo (RRHH)"></textarea>
-                    </div>
+                <div id="claim-id-message" class="hidden text-center mt-2 font-semibold text-gray-600"></div>
+                <div id="error-message" class="hidden text-center mt-4 p-4 rounded-lg bg-red-100 text-red-700 font-medium">
+                    Hubo un error al enviar el reclamo. Por favor, inténtelo de nuevo.
                 </div>
-
-                <div class="grid cols-2" style="margin-top: 1rem;">
-                    <div style="border-right: 1px solid var(--border); padding-right: 1rem;">
-                        <p style="font-weight: 700;">DESEMPEÑO DEL SOLICITANTE</p>
-                        <div class="radio-group" role="radiogroup" aria-label="Desempeño del solicitante">
-                            <label><input type="radio" name="hr_desempeno" value="buena"> Buena</label>
-                            <label><input type="radio" name="hr_desempeno" value="regular"> Regular</label>
-                            <label><input type="radio" name="hr_desempeno" value="mala"> Mala</label>
-                        </div>
-                    </div>
-                    <div>
-                        <p style="font-weight: 700;">OBSERVACIONES</p>
-                        <textarea name="hr_obs_desempeno" aria-label="Observaciones sobre desempeño (RRHH)"></textarea>
-                    </div>
-                </div>
-            </fieldset>
-
-            <fieldset>
-                <legend>Comentarios del Entrevistador</legend>
-                <textarea name="hr_comentarios" aria-label="Comentarios del entrevistador" style="min-height: 100px;"></textarea>
-            </fieldset>
-
-            <fieldset>
-                <legend>Decisión Final</legend>
-                <div class="grid cols-2">
-                    <div class="row"><label for="posicion_aprobada">POSICIÓN APROBADA:</label><input id="posicion_aprobada" type="text" name="posicion_aprobada"></div>
-                    <div class="row"><label for="salario_aprobado">SALARIO APROBADO:</label><input id="salario_aprobado" type="text" name="salario_aprobado"></div>
-                    <div class="row"><label for="fecha_ingreso">FECHA DE INGRESO:</label><input id="fecha_ingreso" type="date" name="fecha_ingreso"></div>
-                    <div class="row"><label for="hr_otros">OTROS:</label><input id="hr_otros" type="text" name="hr_otros"></div>
-                </div>
-            </fieldset>
-            
-            <div style="margin-top: 1rem;">
-                <strong>VISTO BUENO:</strong> <input type="text" name="visto_bueno" aria-label="Visto Bueno de RRHH" style="width: 100%; margin-top: 0.5rem;">
-            </div>
+            </form>
         </div>
-
     </div>
+    
+  <div id="login-section" class="hidden bg-white p-8 sm:p-12 rounded-3xl shadow-2xl w-full max-w-md transform transition-all duration-500">
+    <header class="text-center mb-8">
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-700 to-cyan-800 tracking-wide leading-tight">
+        Acceso de Gerencia
+      </h1>
+      <p class="text-gray-600 mt-2">Inicie sesión para ver los reclamos</p>
+    </header>
+    <form id="login-form" class="space-y-6">
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+        <input type="email" id="email" name="email" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm" required>
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+        <input type="password" id="password" name="password" class="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm" required>
+      </div>
+      <div id="login-message" class="text-center text-red-600 font-semibold hidden"></div>
+      <div class="flex flex-col items-center gap-4 mt-6">
+        <button type="submit" class="w-full px-4 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-bold rounded-lg shadow-lg hover:from-teal-600 hover:to-cyan-700 focus:outline-none focus:ring-4 focus:ring-teal-300 transition-all duration-300 ease-in-out transform hover:scale-105">
+          Iniciar Sesión
+        </button>
+        <button id="go-back-to-form" type="button" class="w-full sm:w-auto px-6 py-3 bg-gray-500 text-white font-bold rounded-lg shadow-lg hover:bg-gray-600 transition-all duration-300 ease-in-out transform hover:scale-105">
+          Volver al Formulario
+        </button>
+      </div>
+    </form>
+  </div>
+  <div id="dashboard-section" class="hidden bg-white p-6 sm:p-10 rounded-3xl shadow-2xl w-full max-w-7xl transform transition-all duration-500">
+    <div id="dashboard-content">
+      <header class="mb-8 text-center">
+        <h1 id="department-title" class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-purple-600 tracking-wide leading-tight">Panel de Control de Reclamos</h1>
+        <p class="text-xl text-gray-700 font-light mt-2">Visor, respuesta y exportación de solicitudes</p>
+        <div class="mt-4 flex flex-wrap justify-center gap-4">
+          <button id="export-excel" class="px-6 py-2 bg-green-600 text-white font-semibold rounded-full shadow-lg hover:bg-green-700 transition">Exportar a Excel</button>
+          <button id="export-pdf" class="px-6 py-2 bg-red-600 text-white font-semibold rounded-full shadow-lg hover:bg-red-700 transition">Exportar a PDF</button>
+          <button id="export-word" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-lg hover:bg-blue-700 transition">Exportar a Word</button>
+          <button id="logout-btn" class="px-6 py-2 bg-gray-500 text-white font-semibold rounded-full shadow-lg hover:bg-gray-600 transition">Cerrar Sesión</button>
+        </div>
+      </header>
 
-    <script>
-        // Set today's date if not already set
-        (function setToday() {
-            var fecha = document.getElementById('fecha_hoy');
-            if (fecha && !fecha.value) {
-                var today = new Date();
-                var y = today.getFullYear();
-                var m = String(today.getMonth() + 1).padStart(2, '0');
-                var d = String(today.getDate()).padStart(2, '0');
-                fecha.value = `${y}-${m}-${d}`;
-            }
-        })();
+      <h2 class="text-2xl font-bold text-gray-800 mt-8 mb-4">Reclamos Pendientes</h2>
+      <div class="table-container bg-gray-50 rounded-2xl shadow-inner border border-gray-200">
+        <table id="claims-table-pendientes" class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-100 sticky top-0 z-10">
+            <tr>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Serial</th>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nombre</th>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Chapa</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo de Reclamo</th>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="claims-table-body-pendientes" class="bg-white divide-y divide-gray-200"></tbody>
+        </table>
+      </div>
 
-        // Handle dynamic rows
-        function agregarFila(tableId) {
-            const tbody = document.getElementById(tableId);
-            const idx = tbody.rows.length;
-            const tr = document.createElement('tr');
-            
-            tr.innerHTML = `
-                <td><input type="text" name="dep_nombre[]" aria-label="Nombre del dependiente"></td>
-                <td><input type="number" name="dep_edad[]" min="0" aria-label="Edad del dependiente"></td>
-                <td><input type="text" name="dep_parentesco[]" aria-label="Parentesco del dependiente"></td>
-                <td>
-                    <div class="radio-group" role="radiogroup" aria-label="Vive con el dependiente">
-                        <label><input type="radio" name="vive_con_${idx}" value="padres"> Sus Padres</label>
-                        <label><input type="radio" name="vive_con_${idx}" value="familia"> Su Familia</label>
-                        <label><input type="radio" name="vive_con_${idx}" value="parientes"> Parientes</label>
-                        <label><input type="radio" name="vive_con_${idx}" value="solo"> Solo</label>
-                    </div>
-                </td>
-            `;
-            
-            tbody.appendChild(tr);
-        }
-        
-        function eliminarFila(tableId) {
-            const tbody = document.getElementById(tableId);
-            if (tbody.rows.length > 1) {
-                tbody.deleteRow(tbody.rows.length - 1);
-            }
-        }
-    </script>
+      <h2 class="text-2xl font-bold text-gray-800 mt-8 mb-4">Reclamos Atendidos</h2>
+      <div class="table-container bg-gray-50 rounded-2xl shadow-inner border border-gray-200">
+        <table id="claims-table-atendidos" class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-100 sticky top-0 z-10">
+            <tr>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Serial</th>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nombre</th>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Chapa</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo de Reclamo</th>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
+              <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="claims-table-body-atendidos" class="bg-white divide-y divide-gray-200"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal fixed inset-0 z-50 overflow-auto bg-gray-800 bg-opacity-75 items-center justify-center p-4">
+    <div class="relative bg-white p-8 rounded-2xl shadow-xl w-full max-w-2xl mx-auto transform transition-all duration-300 scale-95">
+      <button id="close-modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+      <footer style="margin-top: 30px; font-size: 12px; text-align: center; color: #555;">
+      <p>Este formulario es de uso exclusivo para colaboradores de 
+        <b>Serviestiba S.A.</b>, <b>Portuario</b> y <b>Multiservicios</b>.
+      </p>
+      <p>La información solicitada se utiliza únicamente para fines internos de gestión.</p>
+      <p>Contacto oficial: <a href="mailto:info@serviestibasa.com">info@serviestibasa.com</a></p>
+    </footer>
+
 </body>
 </html>
-
-
